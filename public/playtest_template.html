@@ -971,7 +971,7 @@ function render(){
   const passNeeded=!s.over&&humans()>1&&isHuman(a)&&U.passed!==a;
   let h=`<div class="top"><div class="in"><button class="iconbtn" data-a="menu" aria-label="Menu">☰</button>
     <div class="t"><b>${s.over?"Game over":(turnP.name==="You"?"Your turn":esc(turnP.name)+"'s turn")}</b><span>Round ${s.round}${s.monster?`, Level ${s.monster} Monster out`:""}${HOE.tideHolder(s)>=0?`, Rift Tide: ${esc(s.players[HOE.tideHolder(s)].name)}`:""}</span></div>
-    <button class="iconbtn" data-a="undo" aria-label="Undo">↶</button><button class="iconbtn" data-a="log" aria-label="Game log">≡</button></div></div><div class="wrap">`;
+    <button class="iconbtn" data-a="undo" aria-label="Undo">↶</button><button class="iconbtn" data-a="rules" aria-label="Rules">?</button><button class="iconbtn" data-a="log" aria-label="Game log">≡</button></div></div><div class="wrap">`;
   // banner
   if(s.over){h+=`<div class="banner"><div class="grow"><b>${s.result.winners.map(i=>esc(s.players[i].name)).join(" and ")} win${s.result.winners.length>1?"":"s"}</b><br><span class="muted">${esc(s.result.why)} ${esc(s.result.note)}</span></div><button class="btn primary" data-a="scores">Scores</button></div>`}
   else if(a>=0&&!isHuman(a)){h+=`<div class="banner"><div class="grow"><b>${esc(s.players[a].name)}</b> (bot) ${s.choice?"is deciding":"is playing"}${U.paused?", paused":""}</div>
@@ -1077,6 +1077,7 @@ function sheetHTML(){
     tp.champs.filter(u=>!s.cards[u].turned).forEach(u=>{b+=`<button class="opt ${sel.includes(u)?"on":""}" data-a="fsel" data-u="${u}"><span class="l">${esc(CD(u).name)}</span><span class="r">Power ${HOE.cpower(s,tp,u,true)} vs Minions</span></button>`});
     if(!tp.champs.some(u=>!s.cards[u].turned))b+=`<p class="muted">No ready Champions.</p>`;
     b+=`</div><div class="acts"><button class="btn primary" data-a="fightgo" ${tot>=need?"":"disabled"}>Defeat it (${tot} of ${need})</button><button class="btn" data-a="closesheet">Cancel</button></div>`;
+  }else if(sh.k==="rules"){b=rulesHTML();
   }else if(sh.k==="log"){
     b=`<h3 class="cz">Game log</h3><div class="log">${S().log.slice().reverse().map(e=>`<div><span class="r">R${e.r}${e.s>=0?", "+esc(s.players[e.s].name):""}</span>${esc(e.m)}</div>`).join("")}</div><div class="acts"><button class="btn" data-a="closesheet">Close</button></div>`;
   }else if(sh.k==="discard"){
@@ -1098,6 +1099,22 @@ function sheetHTML(){
   return `<div class="veil" data-a="${dismiss?"veil":""}"><div class="sheet" role="dialog" aria-modal="true">${b}</div></div>`;
 }
 function D2(u){return CD(u)}
+function rulesHTML(){
+  const par=Object.values(DEFS).find(d=>d.type==="Ascendancy");const cfg=HOE.cfg();
+  const sec=(t,items)=>`<h3 class="cz" style="font-size:15px;margin-top:14px">${t}</h3><ul style="margin:6px 0 0;padding-left:20px">${items.map(i=>`<li style="margin:3px 0">${i}</li>`).join("")}</ul>`;
+  return `<h3 class="cz">Quick rules</h3><p class="muted" style="margin:2px 0 0">Cards ${esc(HOE_DATA.version)}. Most Prestige at the end wins.</p>`+
+  sec("Your turn, in any order",["<b>Play cards</b> from your hand. Champions and Items stay in play.","<b>Utilize</b> each Item once: Exhaust it and use its ability.","<b>Battle Minions</b> with ready Champions. Their combined Power must equal or beat the Minion's.","<b>Battle the Monster</b> once, if one is out and you haven't yet.","<b>Acquire</b> cards with Influence. Acquiring a Champion is called <b>Enlisting</b>."])+
+  sec("End of turn",["Discard your hand and played cards, ready everything, draw 5."])+
+  sec("Champions",["Stay in play until Vanquished or Sacrificed.","<b>Exhausted Champions can't battle.</b> Battling Exhausts them."])+
+  sec("Minions",["Defeated Minions go to your Trophy pile and score their Prestige.","Some give Influence. Reveal effects trigger when they enter the Arena."])+
+  sec("Monsters",["Portal cards bring Monsters out: Level 1, then 2, then 3.","Everyone battles each Monster once, on their own turn, whenever they choose.","Add up your ready Champions' Power plus bonuses.","<b>Win:</b> take a Mortal Wound. The Monster's abilities don't hit you.","<b>Lose:</b> gain an Infamy and its abilities hit you.","If every player wins, everyone gets a free Esteem (Level 1) or Renown (Level 2)."])+
+  sec("Helping",["Aegis Champions, the Djinn's Wish, Rift Lance and Cataclysm can add Power to another player's Monster Battle.","Help with Rift Lance or Cataclysm and they wound it: you gain a Commendation into your Trophy pile."])+
+  sec("Rift Tide",["2 players: after every turn, Replace the bottom leftmost Arena card.","3 to 5 players: after the Rift Tide holder's turn; the card passes left each round.","Diplomacy (3 to 5 players): if everyone agrees, Replace that card instead."])+
+  sec("Game end",["The Level 3 Monster battle finishes, or someone Ascends by acquiring "+esc(par?par.name:"Paragon of the Accord")+(par?` (cost ${par.cost}, needs ${(par.kd.snitch||[2])[0]} Mortal Wounds)`:"")+".","Finish the round so everyone gets the same number of turns."])+
+  sec("Scoring",["Prestige on your cards, including Trophy Minions.","Each Mortal Wound is worth the number you own: 1 Wound = 1, 2 = 4, 3 = 9.","Guild Leader: +3 if you wounded the Level 3 Monster.","Infamy: "+(cfg.infamy_prestige||-2)+" each."])+
+  sec("Keywords",["<b>Exhaust:</b> turn sideways. Readies at cleanup.","<b>Banish:</b> remove from the game.","<b>Vanquish:</b> a Monster or card kills your Champion.","<b>Sacrifice:</b> you choose one of your Champions to kill.","<b>Replace:</b> remove an Arena card and refill."])+
+  `<div class="acts"><button class="btn primary" data-a="closesheet">Got it</button></div>`;
+}
 
 // ---------- events ----------
 document.addEventListener("click",e=>{
@@ -1128,6 +1145,7 @@ document.addEventListener("click",e=>{
     case "passok":U.passed=i;U.view=i;render();break;
     case "undo":undo();break;
     case "log":U.sheet={k:"log"};render();break;
+    case "rules":U.sheet={k:"rules"};render();break;
     case "menu":U.sheet={k:"menu"};render();break;
     case "scores":U.sheet={k:"scores"};render();break;
     case "discard":U.sheet={k:"discard"};render();break;
