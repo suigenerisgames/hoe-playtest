@@ -73,7 +73,11 @@ async function refresh(force) {
     try {
       const res = await fetch(URL_, { redirect: "follow" });
       if (!res.ok) throw new Error("HTTP " + res.status);
-      const data = parse(Buffer.from(await res.arrayBuffer()));
+      const buf = Buffer.from(await res.arrayBuffer());
+      const ct = String(res.headers.get("content-type") || "");
+      if (ct.includes("text/html") || buf.slice(0, 15).toString().toLowerCase().includes("<!doctype html") || buf.slice(0, 6).toString().toLowerCase().startsWith("<html"))
+        throw new Error("the sheet link returned a web page instead of an .xlsx file. In Google Sheets, check File > Share > Publish to web is on, set to Entire Document and Microsoft Excel (.xlsx)");
+      const data = parse(buf);
       current = { data, at: Date.now(), source: "sheet" };
       console.log(`[cards] loaded ${data.version} from Google Sheet: ${data.cards.length} cards, ${data.notes.length} notes`);
     } catch (e) {
