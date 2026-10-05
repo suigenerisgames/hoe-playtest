@@ -181,7 +181,7 @@ function newGame(opts){
   Object.values(DEFS).forEach(d=>{if(has(d,"first_seat_only"))S.players[0].deck.push(newCard(S,d.id))});
   if(S.cfg.seat_swap){const v=String(S.cfg.seat_swap).split(",").map(Number);S.players.forEach((p,i)=>{for(let k=0;k<(v[i]||0);k++){const sw=p.deck.find(u=>C(S,u).d==="ST1");if(sw){p.deck.splice(p.deck.indexOf(sw),1);p.deck.push(newCard(S,"T5"))}}})}
   if(S.cfg.seat_esteem){const v=String(S.cfg.seat_esteem).split(",").map(Number);S.players.forEach((p,i)=>{for(let k=0;k<(v[i]||0);k++)p.deck.push(newCard(S,S.cfg.seat_bonus_card||"T5"))})}
-  S.players.forEach(p=>{shuffle(S,p.deck);resetTurn(p);draw(S,p,S.cfg.hand_size)});
+  S.players.forEach(p=>{shuffle(S,p.deck);resetTurn(p);draw(S,p,S.cfg.hand_size+(S.cfg.seat_extra_draw?(String(S.cfg.seat_extra_draw).split(",").map(Number)[p.idx]||0):0))});
   let deck=[];
   defs.forEach(d=>{if(d.area==="Arena")for(let k=0;k<d.qty;k++)deck.push(newCard(S,d.id,k<d.portals))});
   shuffle(S,deck);
@@ -333,6 +333,7 @@ function apply(S,a){
       if(!(p.items.includes(a.u)||p.champs.includes(a.u))||C(S,a.u).turned||!D(S,a.u).keys.some(k=>k[0]==="util"))return false;
       utilize(S,p,a.u);break}
     case "fight":{
+      if(S.cfg.no_minion_round1&&S.round===1)return false;
       const m=a.m;if(!fightable(S).includes(m))return false;
       if(a.team.some(u=>!p.champs.includes(u)||C(S,u).turned))return false;
       const tot=a.team.reduce((s,u)=>s+cpower(S,p,u,true),0);
@@ -368,7 +369,7 @@ function apply(S,a){
 function playCard(S,p,u){
   const t=ctype(S,u),d=D(S,u);C(S,u).turned=false;C(S,u).tmp=0;
   if(t==="Influence"){p.infl+=d.infl;p.played.push(u);log(S,`Plays ${d.name} (+${d.infl} Influence).`,p.idx);return}
-  if(t==="Champion"||t==="Champion Token"||t==="Champion Item Token"||t==="Token"||t==="Minion"){p.champs.push(u);log(S,`Deploys ${d.name}.`,p.idx);
+  if(t==="Champion"||t==="Champion Token"||t==="Champion Item Token"||t==="Token"||t==="Minion"){p.champs.push(u);if(S.cfg.enter_exhausted)C(S,u).turned=true;log(S,`Deploys ${d.name}.`,p.idx);
     if(C(S,u).res==null){
       if(has(d,"play_arm_recur")&&p.discard.some(x=>D(S,x).type==="Armament"))S.tasks.push({op:"recur",p:p.idx});
       if(has(d,"play_golem"))makeToken(S,p,"Z6");
@@ -686,7 +687,7 @@ function resolveMonster(S){
 }
 // ---------- turn flow ----------
 function startTurn(S){
-  const p=P(S,S.turn);resetTurn(p);if(S.cfg.seat_first_inf&&S.round===1){const v=String(S.cfg.seat_first_inf).split(",").map(Number);p.infl+=v[p.idx]||0}if(S.cfg.ready_at_start){p.champs.forEach(u=>C(S,u).turned=false);p.items.forEach(u=>C(S,u).turned=false)}S.allPower=0;S.checkBonus=0;
+  const p=P(S,S.turn);resetTurn(p);if(S.cfg.tide_holder_infl&&S.n>=3&&S.cfg["tide_mode_"+S.n+"p"]==="rotate"&&tideHolderIdx(S)===p.idx){p.infl+=S.cfg.tide_holder_infl;S.tideBonus=(S.tideBonus||0)+1}if(S.cfg.tide_holder_draw&&S.n>=3&&tideHolderIdx(S)===p.idx){draw(S,p,S.cfg.tide_holder_draw)}if(S.cfg.seat_first_inf&&S.round===1){const v=String(S.cfg.seat_first_inf).split(",").map(Number);p.infl+=v[p.idx]||0}if(S.cfg.ready_at_start){p.champs.forEach(u=>C(S,u).turned=false);p.items.forEach(u=>C(S,u).turned=false)}S.allPower=0;S.checkBonus=0;
   if(S.monster&&S.battleQueue==null){S.battleQueue=[];for(let i=0;i<S.n;i++)S.battleQueue.push((S.turn+i)%S.n);S.battleDone=[]}
   if(!S.monster&&S.levelNext<=3&&!S.arenaDeck.length){openMonster(S);S.battleQueue=[];for(let i=0;i<S.n;i++)S.battleQueue.push((S.turn+i)%S.n)}
   log(S,`Round ${S.round}: ${p.name}'s turn${isBattleTurn(S,p.idx)?" (battle turn vs "+monster(S).name+")":""}.`,p.idx);
@@ -700,6 +701,7 @@ function endTurn(S){
   if(p.champs.some(u=>has(D(S,u),"hungry")&&cpower(S,p,u)>=10))extra++;
   (S.turnLog=S.turnLog||[]).push({r:S.round,seat:p.idx,left:p.infl});
   p.discard.push(...p.hand,...p.played);p.hand=[];p.played=[];
+  S.players.forEach(q=>q.champs.forEach(u=>{if(C(S,u).arms.some(x=>has(D(S,x),"arm_indomitable")))C(S,u).turned=false}));
   if(S.cfg.ready_at_start)p.champs.forEach(u=>{C(S,u).tmp=0});else{p.champs.forEach(u=>{C(S,u).turned=false;C(S,u).tmp=0});p.items.forEach(u=>C(S,u).turned=false)}
   p.boost=0;p.turnPower=0;p.utilCount=0;S.allPower=0;p.infl=0;
   draw(S,p,S.cfg.hand_size+extra);
@@ -710,7 +712,7 @@ function endTurn(S){
   const mode=S.cfg["tide_mode_"+S.n+"p"];
   if(mode){
     const wrap=S.turn===0;
-    if(mode==="rotate"&&ended===(S.round-1)%S.n&&S.arena.length){S.tasks.push({op:"diplomacy",votes:{},then:wrap?"round":"start",noExtra:1});return}
+    if(mode==="rotate"&&ended===tideHolderIdx(S)&&S.arena.length){S.tasks.push({op:"diplomacy",votes:{},then:wrap?"round":"start",noExtra:1});return}
     if(mode==="turn"&&S.arena.length){S.tasks.push({op:"diplomacy",votes:{},then:wrap?"round":"start",noExtra:1,noVote:1});return}
     if(wrap&&(mode==="round"||mode==="diplomacy")&&S.arena.length){S.tasks.push({op:"diplomacy",votes:{},then:"round",voteOnly:mode==="diplomacy"});return}
     if(wrap){S.round++;S.roundArenaAcq=0;if(S.round>60){endGame(S,"Round limit reached.");return}}
@@ -783,6 +785,7 @@ function score(S){
     return {total:Object.values(b).reduce((s,x)=>s+x,0),b};
   });
 }
+function tideHolderIdx(S){const st=S.cfg.tide_start==="last"?S.n-1:0;const dir=S.cfg.tide_pass_right?-1:1;return (((st+dir*(S.round-1))%S.n)+S.n)%S.n}
 function requestEnd(S,why){if(S.cfg.finish_round){if(!S.endPending){S.endPending=why;log(S,`${why} Finishing the round.`)}return}endGame(S,why)}
 function endGame(S,why){
   S.over=true;S.choice=null;S.tasks=[];
@@ -873,6 +876,7 @@ function botChoose(S){
   return pick(o[0].key);
 }
 function botFightPlan(S,p,avoid){
+  if(S.cfg.no_minion_round1&&S.round===1)return null;
   const ms=fightable(S).sort((a,b)=>(D(S,b).prestige+D(S,b).infl)-(D(S,a).prestige+D(S,a).infl));
   const avail=p.champs.filter(u=>!C(S,u).turned);
   if(!ms.length||!avail.length)return null;
@@ -913,7 +917,7 @@ function botAction(S){
   if(battle&&!p.battled)return {t:"faceMonster"};
   return {t:"endTurn"};
 }
-root.HOE={minionPower,fightable,tideHolder:S=>{const m=S.cfg["tide_mode_"+S.n+"p"];return m==="turn"?S.turn:m==="rotate"?(S.round-1)%S.n:-1},itemsCount,loadData,newGame,apply,botAction,actorSeat,cpower,cost,acquirable,canPlay,checkPower,isBattleTurn,monster,score,ctype,minionNeed,hasCrown,
+root.HOE={minionPower,fightable,tideHolder:S=>{const m=S.cfg["tide_mode_"+S.n+"p"];return m==="turn"?S.turn:m==="rotate"?tideHolderIdx(S):-1},itemsCount,loadData,newGame,apply,botAction,actorSeat,cpower,cost,acquirable,canPlay,checkPower,isBattleTurn,monster,score,ctype,minionNeed,hasCrown,
   defs:()=>DEFS,mons:()=>MONS,cfg:()=>CFG};
 })(typeof window!=="undefined"?window:globalThis);
 </script>
@@ -939,7 +943,7 @@ function renderSetup(){
   const save=store("hoe_save");
   let h=`<div class="wrap"><div class="hero"><h1 class="cz">Heroes of Edgeport</h1><p>Playtest table. Seat any mix of people and bots, then take over any seat whenever you like.</p></div>`;
   if(save&&save.S&&!save.S.over&&save.S.v===HOE_DATA.version)h+=`<div class="banner"><div class="grow"><b>Game in progress</b><br><span class="muted">Round ${save.S.round}, ${save.S.n} players</span></div><button class="btn primary" data-a="resume">Resume</button></div>`;
-  if(HOE_DATA.notes&&HOE_DATA.notes.length)h+=`<div class="banner" style="display:block"><b>Card list notes</b><br><span class="muted" style="font-size:14px">${HOE_DATA.notes.map(esc).join("<br>")}</span></div>`;
+  if(HOE_DATA.notes&&HOE_DATA.notes.length)console.log('Card list notes:',HOE_DATA.notes);
   h+=`<div class="sec"><h2>Players</h2><div class="seg" role="group" aria-label="Player count">${[1,2,3,4,5].map(n=>`<button class="${st.n===n?"on":""}" data-a="n" data-v="${n}">${n===1?"Solo":n}</button>`).join("")}</div></div>`;
   if(st.n===1){const tn=String(HOE.cfg().solo_tier_names||"Bronze,Silver,Gold,Hero").split(","),tv=String(HOE.cfg().solo_tiers||"60,75,90,100").split(",");
     h+=`<div class="banner" style="display:block"><b>Solo</b>: reach a Prestige target before the game ends. ${tn.map((n,i)=>`${n} ${tv[i]}`).join(", ")}.<div class="field" style="margin:8px 0 0"><label>Difficulty</label><div class="seg"><button class="${st.challenge?"":"on"}" data-a="chal" data-v="0">Standard</button><button class="${st.challenge?"on":""}" data-a="chal" data-v="1">Heroic</button></div></div></div>`}
@@ -1174,7 +1178,7 @@ function rulesHTML(){
   sec("Minions",["Defeated Minions go to your Trophy pile and score their Prestige.","Some give Influence. Reveal effects trigger when they enter the Arena."])+
   sec("Monsters",["Portal cards bring Monsters out: Level 1, then 2, then 3.","Everyone battles each Monster once, on their own turn, whenever they choose.","Add up your ready Champions' Power plus bonuses.","<b>Win:</b> take a Mortal Wound. The Monster's abilities don't hit you.","<b>Lose:</b> gain an Infamy and its abilities hit you.","If every player wins, everyone gains a Commendation (solo: Esteem or Renown)."])+
   sec("Rally",["If you can't beat the Monster's Power, you may send a Rally cry.","Each other player may then Exhaust one ready Champion to add its Power.","If your battle succeeds, every player who Rallied draws 1 card. If every player wounds the Monster, everyone gains a Commendation.","Aegis (Paladins): may Rally even while Exhausted, then returns to your hand. Its Armaments stay in play, unequipped."])+sec("Armaments",["Armaments are Items. Playing one Equips it to a Champion.","Equip: once during your turn, you may attach an unequipped Armament in play to one of your Champions. A Champion can carry more than one Armament."])+
-  sec("Rift Tide",["2 players: after every turn, Replace the bottom leftmost Arena card.","3 to 5 players: after the Rift Tide holder's turn; the card passes left each round.","Diplomacy (3 to 5 players): if everyone agrees, Replace that card instead."])+
+  sec("Rift Tide",["2 players: after every turn, Replace the bottom leftmost Arena card; the card passes left each turn.","3 to 5 players: the last player starts with the Rift Tide. The holder gains +1 Influence on their turn, then Replaces the bottom leftmost Arena card at the end of it. Pass it to the right each round.","Diplomacy (3 to 5 players): if everyone agrees, Replace that card instead."])+
   sec("Game end",["The Level 3 Monster battle finishes, or someone Ascends by acquiring "+esc(par?par.name:"Paragon of the Accord")+(par?` (cost ${par.cost}, needs ${(par.kd.snitch||[2])[0]} Mortal Wounds)`:"")+".","Finish the round so everyone gets the same number of turns."])+
   sec("Scoring",["Prestige on your cards, including Trophy Minions.","Each Mortal Wound is worth the number you own: 1 Wound = 1, 2 = 4, 3 = 9.","Guild Leader: +3 if you wounded the Level 3 Monster.","Infamy: "+(cfg.infamy_prestige||-2)+" each."])+
   sec("Solo",["Use the Guild Identity card instead of a Guild Leader: once per game, Enlist any guild's Champion for 1 less.","Seed 20 cards (15 in Heroic mode). The Rift Tide fires after every turn.","Wound a Monster and it's defeated. Cards that help or count other players do nothing.","No loss: score Prestige. "+String(cfg.solo_tier_names||"Bronze,Silver,Gold,Hero").split(",").map((n,i)=>n+" "+String(cfg.solo_tiers||"60,75,90,100").split(",")[i]).join(", ")+"."])+
