@@ -204,7 +204,8 @@ function draw(S,p,n){let k=0;for(let i=0;i<n;i++){if(!p.deck.length){if(!p.disca
 function monster(S){return S.monster?MONS[S.monsterPick[S.monster]]:null}
 function isBattleTurn(S,i){return !!S.monster&&S.battleQueue&&S.battleQueue[0]===i}
 // ---------- arena ----------
-function refill(S,initial){
+function refill(S,initial,force){
+  if(S.cfg.refill_eot&&!initial&&!force)return;
   while(S.arena.length<S.cfg.arena_size&&S.arenaDeck.length){
     const u=S.arenaDeck.pop();S.arena.push(u);
     if(!initial){
@@ -223,6 +224,11 @@ function openMonster(S){
   (S.emergeLog=S.emergeLog||[]).push({L:S.levelNext,round:S.round,boards:S.players.map(p=>p.champs.reduce((s,u)=>s+cpower(S,p,u,false,true),0)),champs:S.players.map(p=>p.champs.length)});S.woundsThis=[];S.battleQueue=null;S.battleDone=[];
   log(S,`Level ${S.monster} Monster emerges: ${monster(S).name} (Power ${monster(S).power}).`);
   if("reveal_sac" in monster(S).kd)S.players.forEach(p=>{if(p.champs.length)S.tasks.unshift({op:"sacAny",p:p.idx,why:monster(S).name})});
+  {const mk=monster(S).kd,mn=monster(S).name;
+   if("reveal_vanq_weak" in mk)S.players.forEach(p=>{if(p.champs.length){log(S,`${mn} Impact hits ${p.name}.`);vanquish(S,p,weakest(S,p,p.champs))}});
+   if("reveal_vanq_strong_le" in mk)S.players.forEach(p=>{const c=p.champs.filter(u=>cpower(S,p,u)<=+mk.reveal_vanq_strong_le[0]);if(c.length){log(S,`${mn} Impact hits ${p.name}.`);vanquish(S,p,strongest(S,p,c))}});
+   if("reveal_vanq_strong" in mk)S.players.forEach(p=>{if(p.champs.length){log(S,`${mn} Impact hits ${p.name}.`);vanquish(S,p,strongest(S,p,p.champs))}});
+   if("reveal_sac_le" in mk)S.players.forEach(p=>{if(p.champs.some(u=>cpower(S,p,u)<=+mk.reveal_sac_le[0]))S.tasks.unshift({op:"sacLe",p:p.idx,le:+mk.reveal_sac_le[0],why:mn})});}
 }
 function minionReveal(S,u){
   const d=D(S,u);const k=d.kd.reveal;if(!k)return;
@@ -240,7 +246,7 @@ function minionReveal(S,u){
 function equippedItems(S,p){const o=[];p.champs.forEach(u=>C(S,u).arms.forEach(a=>{if(DEFS[C(S,a).d].isItem)o.push(a)}));return o}
 function itemsCount(S,p){return p.items.length+equippedItems(S,p).length+p.champs.filter(u=>(C(S,u).d==="Z6"&&DEFS.Z6.type.includes("Item"))||(DEFS[C(S,u).d].isItem&&C(S,u).res==null)).length}
 function woundedOpps(S,p){return S.players.filter(q=>q!==p&&q.wounds.length>0).length}
-function gainCommendation(S,p,why){const pile=S.supply.T8;if(pile&&pile.length){p.trophy.push(pile.pop());log(S,`${why}: gains a Commendation into the Trophy pile.`,p.idx)}}
+function gainCommendation(S,p,why){const pile=S.supply.T8;if(pile&&pile.length){p.trophy.push(pile.pop());log(S,`${why}: Acquires a Commendation into the Trophy pile.`,p.idx)}}
 function weakest(S,p,list){return list.reduce((a,b)=>cpower(S,p,b)<cpower(S,p,a)?b:a)}
 function strongest(S,p,list){return list.reduce((a,b)=>cpower(S,p,b)>cpower(S,p,a)?b:a)}
 function vanquish(S,p,u){
@@ -248,7 +254,7 @@ function vanquish(S,p,u){
   const prot=c.arms.find(a=>has(D(S,a),"arm_protect"));
   if(prot){c.arms.splice(c.arms.indexOf(prot),1);p.discard.push(prot);log(S,`${nm(S,prot)} is discarded to save ${nm(S,u)}.`,p.idx);return}
   p.champs.splice(i,1);p.discard.push(...c.arms);c.arms=[];c.turned=false;
-  log(S,`${nm(S,u)} is Vanquished.`,p.idx);
+  log(S,`${nm(S,u)} is Sacrificed.`,p.idx);
   const d=D(S,u);
   if(d.type.endsWith("Token"))S.tokens[d.id]++;else p.discard.push(u);
   if(has(d,"undying"))makeToken(S,p,"Z5");
@@ -256,11 +262,13 @@ function vanquish(S,p,u){
 function makeToken(S,p,id){if(S.tokens[id]>0){S.tokens[id]--;const u=newCard(S,id);p.champs.push(u);log(S,`Creates a ${DEFS[id].name} token.`,p.idx)}}
 function gainInfamy(S,p,n){for(let i=0;i<n;i++){
   if(p.champs.some(u=>has(D(S,u),"infamy_immune"))){log(S,`Infamy Banished instead (All Hallows Evie).`,p.idx);continue}
-  if(S.infamyLeft>0){S.infamyLeft--;p.discard.push(newCard(S,"Z4"));log(S,`Gains Infamy.`,p.idx)}}}
+  if(S.infamyLeft>0){S.infamyLeft--;p.discard.push(newCard(S,"Z4"));log(S,`Gains an Infamy.`,p.idx)}}}
 function cpower(S,p,u,vsMinion,battle){
   const c=C(S,u),d=DEFS[c.d];let b;
   if(c.res!=null)b=c.res;else if(has(d,"power_eq_items"))b=itemsCount(S,p);else b=d.power;
   if(c.tmp)b+=c.tmp;
+  if(p&&p.warL2&&(S.cfg.war_l2_all||d.guild==="Warrior")&&String(d.type).includes("Champion"))b+=1;
+  if(vsMinion&&c.tmpM)b+=c.tmpM;
   const g=d.guild;
   p.champs.forEach(o=>{const od=D(S,o);
     if(has(od,"rally"))b+=kv(od,"rally");
@@ -303,7 +311,7 @@ function cost(S,p,u){
   return Math.max(d.cost>0?1:0,c);
 }
 // ---------- legality ----------
-function canPlay(S,p,u){const t=ctype(S,u);return !["Infamy","Prestige","Mortal Wound","Ascendancy"].includes(t)&&!(t==="Armament"&&!p.champs.length)}
+function canPlay(S,p,u){const t=ctype(S,u);return !["Infamy","Prestige","Mortal Wound","Critical Hit","Ascendancy"].includes(t)&&!(t==="Armament"&&!p.champs.length)}
 function hasCrown(S,p){return p.items.some(u=>has(D(S,u),"crown"))}
 function acquirable(S,p){
   const out=[];
@@ -312,7 +320,7 @@ function acquirable(S,p){
   if(hasCrown(S,p)&&S.arenaDeck.length){const u=S.arenaDeck[S.arenaDeck.length-1];if(ctype(S,u)!=="Minion")out.push({u,from:"deck"})}
   return out.map(o=>{o.cost=cost(S,p,o.u);o.ok=o.cost<=p.infl&&!(D(S,o.u).type==="Ascendancy"&&p.wounds.length<kv(D(S,o.u),"snitch"));return o});
 }
-function minionPower(S,m){const d=D(S,m);let v=d.power;if(has(d,"wound_boost")&&S.players.some(q=>q.wounds.length))v+=kv(d,"wound_boost");return v}
+function minionPower(S,m){const d=D(S,m);let v=d.power;if(S.cfg.minion_scale&&S.arena.includes(m))v+=S.cfg.minion_scale*Math.max(0,(S.levelNext||1)-1);if(has(d,"wound_boost")&&S.players.some(q=>q.wounds.length))v+=kv(d,"wound_boost");return v}
 function minionNeed(S,p,m){const d=D(S,m);let v=minionPower(S,m);if(has(d,"rat_scale"))v+=kv(d,"rat_scale")*p.trophy.filter(x=>C(S,x).d===d.id).length;return v-(p.boost||0)}
 function tcMinions(S){const o=[];Object.keys(S.supply).forEach(id=>{const pile=S.supply[id];if(pile.length&&DEFS[id].type==="Minion")o.push(pile[pile.length-1])});return o}
 function fightable(S){return S.arena.filter(u=>ctype(S,u)==="Minion").concat(tcMinions(S))}
@@ -359,16 +367,16 @@ function apply(S,a){
       S.tasks.push({op:"transmuteItem",p:p.idx});break}
     case "faceMonster":{
       if(!isBattleTurn(S,p.idx)||p.battled)return false;
-      p.battled=true;S.tasks.push({op:"reactions",i:1},{op:"transmute"},{op:"check"});break}
+      p.battled=true;S.tasks.push({op:"bstart"},{op:"reactions",i:1},{op:"transmute"},{op:"check"});break}
     case "endTurn":{
-      if(isBattleTurn(S,p.idx)&&!p.battled){p.battled=true;S.tasks.push({op:"reactions",i:1},{op:"transmute"},{op:"check"})}
+      if(isBattleTurn(S,p.idx)&&!p.battled){p.battled=true;S.tasks.push({op:"bstart"},{op:"reactions",i:1},{op:"transmute"},{op:"check"})}
       S.tasks.push({op:"endTurn"});break}
     default:return false;
   }
   run(S);return true;
 }
 function playCard(S,p,u){
-  const t=ctype(S,u),d=D(S,u);C(S,u).turned=false;C(S,u).tmp=0;
+  const t=ctype(S,u),d=D(S,u);C(S,u).turned=false;C(S,u).tmp=0;C(S,u).tmpM=0;
   if(t==="Influence"){p.infl+=d.infl;p.played.push(u);log(S,`Plays ${d.name} (+${d.infl} Influence).`,p.idx);return}
   if(t==="Champion"||t==="Champion Token"||t==="Champion Item Token"||t==="Token"||t==="Minion"){p.champs.push(u);if(S.cfg.enter_exhausted)C(S,u).turned=true;log(S,`Deploys ${d.name}.`,p.idx);
     if(C(S,u).res==null){
@@ -421,7 +429,7 @@ function acquire(S,p,u,from){
   else{const pile=S.supply[d.id];pile.pop()}
   log(S,`${t==="Champion"?"Enlists":"Acquires"} ${d.name}${from==="deck"?" from the top of the Arena deck (Crown)":""}.`,p.idx);
   if(t==="Ascendancy"){p.trophy.push(u);S.ascendBy=p.idx;requestEnd(S,`${p.name} Ascended.`);return}
-  if((t==="Item"||d.isItem)&&t!=="Champion"&&p.champs.some(x=>has(D(S,x),"expedite"))){p.hand.push(u);log(S,`${d.name} goes to hand (Expedite).`,p.idx)}else p.discard.push(u);
+  if((t==="Item"||d.isItem)&&t!=="Champion"&&p.champs.some(x=>has(D(S,x),"expedite"))){p.hand.push(u);log(S,`${d.name} goes to hand (Expedite).`,p.idx)}else if(String(d.type).includes("Armament")&&p.champs.some(x=>has(D(S,x),"arm_to_hand"))){p.hand.push(u);log(S,`${d.name} goes to hand (Vigilant).`,p.idx)}else p.discard.push(u);
   if(has(d,"acq_banish"))S.tasks.push({op:"banish",p:p.idx,n:kv(d,"acq_banish"),where:["hand","discard"],opt:true});
   if(has(d,"acq_arena_banish"))S.tasks.push({op:"arenaReplace",p:p.idx});
   if(has(d,"acq_arm_recur")&&p.champs.length&&p.discard.some(x=>D(S,x).type==="Armament"))S.tasks.push({op:"recur",p:p.idx});
@@ -457,7 +465,7 @@ function exec(S,t){
       ask(S,p.idx,"equip",`Equip ${nm(S,t.u)} to which Champion?`,p.champs.map(u=>({key:u,u})),{a:t.u});return}
     case "killminion":{
       const ms=fightable(S).filter(u=>minionPower(S,u)<=t.x);
-      if(!ms.length){log(S,`No Minion with Power ${t.x} or less to defeat.`,p.idx);return}
+      if(!ms.length){log(S,`No Minion with Power ${t.x} or less to Defeat.`,p.idx);return}
       ask(S,p.idx,"killminion",`Defeat a Minion with Power ${t.x} or less`,ms.map(u=>({key:u,u})));return}
     case "arenaReplace":{
       if(!S.arena.length)return;
@@ -467,17 +475,19 @@ function exec(S,t){
       ask(S,p.idx,"recurArm","Josiah: choose an Armament from your discard pile",arms.map(u=>({key:u,u})).concat([{key:"pass",label:"Skip"}]));return}
     case "vanqChoice":{
       const c=p.champs.filter(u=>cpower(S,p,u)>=t.ge);if(!c.length)return;
-      ask(S,p.idx,"vanqChoice",`${t.mn}: Vanquish one of your Champions with Power ${t.ge} or more`,c.map(u=>({key:u,u})));return}
+      ask(S,p.idx,"vanqChoice",`${t.mn}: Sacrifice one of your Champions with Power ${t.ge} or more`,c.map(u=>({key:u,u})));return}
     case "windfall":{const sw=p.hand.filter(u=>D(S,u).id==="ST1");if(!sw.length||!S.supply.T5.length)return;
       ask(S,p.idx,"windfall","Alchemical Windfall: Banish a Sway from your hand to gain an Esteem into your hand?",[{key:sw[0],u:sw[0],label:"Banish a Sway, gain an Esteem"},{key:"pass",label:"No"}]);return}
-    case "sacAny":{if(!p.champs.length)return;ask(S,p.idx,"vanqChoice",`${t.why}: Sacrifice one of your Champions`,p.champs.map(u=>({key:u,u})));return}
+    case "freeItem":{const c=S.arena.filter(u=>String(D(S,u).type).includes("Item")&&D(S,u).type!=="Champion Item"&&D(S,u).cost<=5);if(!c.length)return;ask(S,p.idx,"freeItem","Guild Leader reward: Acquire an Item costing 5 or less for no cost",c.map(u=>({key:u,u})).concat([{key:"pass",label:"No thanks"}]));return}
+    case "sacLe":{const c=p.champs.filter(u=>cpower(S,p,u)<=t.le);if(!c.length)return;ask(S,p.idx,"vanqChoice",`${t.why}: Sacrifice one of your Champions with Power ${t.le} or less`,c.map(u=>({key:u,u})));return}
+      case "sacAny":{if(!p.champs.length)return;ask(S,p.idx,"vanqChoice",`${t.why}: Sacrifice one of your Champions`,p.champs.map(u=>({key:u,u})));return}
     case "sacItem":{const pool=p.items.concat(equippedItems(S,p));if(!pool.length)return;ask(S,p.idx,"sacItem",`${t.why}: Sacrifice one of your Items in play (it goes to your discard pile)`,pool.map(u=>({key:u,u})));return}
     case "returnItem":{if(!p.items.length)return;ask(S,p.idx,"returnItem",`${t.why}: return one of your Items in play to your hand`,p.items.map(u=>({key:u,u})));return}
     case "pump":{if(!p.champs.length)return;ask(S,p.idx,"pump",`Give a Champion +${t.n} Power this turn`,p.champs.map(u=>({key:u,u})),{n:t.n});return}
     case "sacrifice":{const el=p.champs.filter(u=>D(S,u).guild!=="Militia"&&!D(S,u).type.endsWith("Token"));if(!el.length){log(S,`No eligible Champion to Sacrifice.`,p.idx);return}
-      ask(S,p.idx,"sacrifice","Sacrifice: Vanquish one of your non-Militia, non-Token Champions, then create two Exhausted Undead",el.map(u=>({key:u,u})));return}
+      ask(S,p.idx,"sacrifice","Sacrifice one of your non-Militia, non-Token Champions, then create two Exhausted Undead",el.map(u=>({key:u,u})));return}
     case "vanqNonMil":{const c=p.champs.filter(u=>D(S,u).guild!=="Militia");if(!c.length)return;
-      ask(S,p.idx,"vanqChoice",`${t.why}: Vanquish one of your non-Militia Champions`,c.map(u=>({key:u,u})));return}
+      ask(S,p.idx,"vanqChoice",`${t.why}: Sacrifice one of your non-Militia Champions`,c.map(u=>({key:u,u})));return}
     case "transmuteItem":{if(!p.items.length||!p.champs.length)return;
       ask(S,p.idx,"transmuteItem","Transmute: Banish which Item?",p.items.map(u=>({key:u,u,label:`${nm(S,u)} (+${2*D(S,u).prestige})`})).concat([{key:"pass",label:"Cancel"}]));return}
     case "reactions":return reactions(S,t.i);
@@ -489,6 +499,13 @@ function exec(S,t){
       if(!a.champs.some(u=>has(D(S,u),"item_sac"))||!a.items.length)return;
       const [tot,need]=checkPower(S,a);
       ask(S,a.idx,"transmute",`Transmute: Banish an Item for +2x its Prestige? (now ${tot} vs ${need})`,a.items.map(u=>({key:u,u,label:`${nm(S,u)} (+${2*D(S,u).prestige})`})).concat([{key:"pass",label:"No"}]));return}
+    case "bstart":{const p0=P(S,S.turn);const mk=mkd(S);
+      if(S.cfg.start_now&&!p0.ignoreMon){p0.startDone=true;monsterStart(S,p0)}
+      if("djinn_trophy" in mk&&p0.champs.length&&!p0.ignoreMon){const u=p0.champs[Math.floor(rnd(S)*p0.champs.length)];const c=C(S,u);const arms=c.arms.slice();c.arms=[];
+        p0.champs.splice(p0.champs.indexOf(u),1);c.turned=false;if(D(S,u).type.endsWith("Token"))S.tokens[D(S,u).id]++;else p0.trophy.push(u);
+        log(S,`Make a Wish: ${nm(S,u)} goes to the Trophy pile.`,p0.idx);
+        if(arms.length){if(p0.champs.length){const st=strongest(S,p0,p0.champs);arms.forEach(a=>C(S,st).arms.push(a))}else arms.forEach(a=>p0.discard.push(a))}}
+      return}
     case "check":return monsterCheck(S);
     case "equipFromPlay":{if(!p.items.includes(t.u)||!p.champs.length)return;ask(S,p.idx,"equipFromPlay",`Equip ${nm(S,t.u)} to which Champion?`,p.champs.map(u=>({key:u,u})).concat([{key:"pass",label:"Cancel"}]),{a:t.u});return}
     case "transmuteChamp":{if(!p.items.includes(t.it))return;ask(S,p.idx,"transmuteChamp",`Which Champion gets +${2*D(S,t.it).prestige} Power?`,p.champs.map(u=>({key:u,u})),{it:t.it});return}
@@ -523,6 +540,7 @@ function fx(S,p,k){
     case "tokens":for(let i=0;i<a;i++)makeToken(S,p,"Z5");break;
     case "banish_hand2":front.push({op:"banish",p:p.idx,n:a,where:["hand"],opt:true});break;
     case "pump":front.push({op:"pump",p:p.idx,n:a});break;
+    case "pump_minion":p.pendingPM=(p.pendingPM||0)+a;break;
     case "self_comm":p.selfComm=true;break;
     case "banish_disc":front.push({op:"banish",p:p.idx,n:a,where:["discard"],opt:true});break;
   }
@@ -547,10 +565,11 @@ function resolveChoice(S,key){
     case "arenaReplace":{if(!S.arena.includes(k)){S.choice=ch;return}S.arena.splice(S.arena.indexOf(k),1);log(S,`Replaces ${nm(S,k)} in the Arena.`,p.idx);refill(S);break}
     case "recurArm":{if(k==="pass")break;p.discard.splice(p.discard.indexOf(k),1);S.tasks.unshift({op:"equip",p:p.idx,u:k});break}
     case "vanqChoice":{vanquish(S,p,k);break}
-    case "windfall":{if(k==="pass")break;p.hand.splice(p.hand.indexOf(k),1);log(S,`Banishes a Sway.`,p.idx);if(S.supply.T5.length){p.hand.push(S.supply.T5.pop());log(S,`Gains an Esteem into hand.`,p.idx)}break}
+    case "freeItem":{if(k==="pass")break;if(!S.arena.includes(k)){S.choice=ch;return}acquire(S,p,k,"arena");log(S,`Guild Leader reward: Acquires ${nm(S,k)} for no cost.`,p.idx);break}
+    case "windfall":{if(k==="pass")break;p.hand.splice(p.hand.indexOf(k),1);log(S,`Banishes a Sway.`,p.idx);if(S.supply.T5.length){p.hand.push(S.supply.T5.pop());log(S,`Acquires an Esteem into hand.`,p.idx)}break}
     case "sacItem":{if(p.items.includes(k))p.items.splice(p.items.indexOf(k),1);else p.champs.forEach(u=>{const ar=C(S,u).arms;if(ar.includes(k))ar.splice(ar.indexOf(k),1)});C(S,k).turned=false;p.discard.push(k);log(S,`Sacrifices ${nm(S,k)} to the discard pile.`,p.idx);break}
     case "returnItem":{p.items.splice(p.items.indexOf(k),1);C(S,k).turned=false;p.hand.push(k);log(S,`Returns ${nm(S,k)} to hand.`,p.idx);break}
-    case "pump":{C(S,k).tmp=(C(S,k).tmp||0)+d.n;log(S,`${nm(S,k)} gets +${d.n} Power this turn.`,p.idx);break}
+    case "pump":{if(p.pendingPM){C(S,k).tmpM=(C(S,k).tmpM||0)+p.pendingPM;p.pendingPM=0}C(S,k).tmp=(C(S,k).tmp||0)+d.n;log(S,`${nm(S,k)} gets +${d.n} Power this turn.`,p.idx);break}
     case "sacrifice":{vanquish(S,p,k);[0,1].forEach(()=>{makeToken(S,p,"Z5");const x=p.champs[p.champs.length-1];if(x&&C(S,x).d==="Z5")C(S,x).turned=true});break}
     case "transmuteItem":{if(k==="pass")break;S.tasks.unshift({op:"transmuteChamp",p:p.idx,it:k});break}
     case "transmuteChamp":{p.items.splice(p.items.indexOf(d.it),1);const v=2*D(S,d.it).prestige;C(S,k).tmp=(C(S,k).tmp||0)+v;log(S,`Transmutes ${nm(S,d.it)}: ${nm(S,k)} gets +${v} Power this turn.`,p.idx);break}
@@ -570,9 +589,9 @@ function resolveChoice(S,key){
         if(S.cfg.rally_draw_any&&!p.rallyDrew){p.rallyDrew=true;draw(S,p,S.cfg.rally_draw_any);S.rallyDraws=(S.rallyDraws||0)+1;log(S,`Draws ${S.cfg.rally_draw_any} for Rallying.`,p.idx)}
         const aeg=p.champs.some(x=>has(D(S,x),"rally_ready"));if(!aeg)C(S,opt.u).turned=true;
         log(S,`Rallies ${nm(S,opt.u)} to ${pname(S,S.turn)}'s battle: +${v} Power${aeg?" (Aegis: it readies)":""}.`,p.idx)}
-      else if(opt.kind==="rp"){p.hand.splice(p.hand.indexOf(opt.u),1);if(!(S.cfg.magic_single_use&&D(S,opt.u).type==="Action - Magic"))p.discard.push(opt.u);const v=kv(D(S,opt.u),"react_pump");S.checkBonus+=v;log(S,`Plays ${nm(S,opt.u)} on ${pname(S,S.turn)}'s Champion: +${v} Power.`,p.idx);if(has(D(S,opt.u),"react_comm"))(S.aegisHonor=S.aegisHonor||[]).push(p.idx)}
+      else if(opt.kind==="rp"){p.hand.splice(p.hand.indexOf(opt.u),1);if(has(D(S,opt.u),"react_return"))p.hand.push(opt.u);else if(!(S.cfg.magic_single_use&&D(S,opt.u).type==="Action - Magic"))p.discard.push(opt.u);const v=kv(D(S,opt.u),"react_pump");if(has(D(S,opt.u),"react_banish"))S.tasks.unshift({op:"banish",p:p.idx,n:1,where:["hand","discard"],opt:true});if(has(D(S,opt.u),"react_leader"))(S.supportLeader=S.supportLeader||[]).push(p.idx);S.supportPlays=(S.supportPlays||0)+1;S.checkBonus+=v;log(S,`Support: plays ${nm(S,opt.u)} on ${pname(S,S.turn)}'s Battle: +${v} Power.`,p.idx);if(has(D(S,opt.u),"react_comm"))(S.aegisHonor=S.aegisHonor||[]).push(p.idx)}
       else if(opt.kind==="cta"){p.hand.splice(p.hand.indexOf(opt.u),1);p.discard.push(opt.u);S.allPower+=1;log(S,`Plays Call to Arms during ${pname(S,S.turn)}'s check. All Champions get +1 Power.`,p.idx)}
-      else if(opt.kind==="wish"){const v=cpower(S,p,opt.u);S.checkBonus+=v;log(S,`Vanquishes ${nm(S,opt.u)} to add ${v} Power (Make a Wish).`,p.idx);vanquish(S,p,opt.u);p.wished=true}
+      else if(opt.kind==="wish"){const v=cpower(S,p,opt.u);S.checkBonus+=v;log(S,`Sacrifices ${nm(S,opt.u)} to add ${v} Power (Make a Wish).`,p.idx);vanquish(S,p,opt.u);p.wished=true}
       S.tasks.unshift({op:"reactions",i:nextI});break}
     case "diplomacy":{S.tasks.unshift(Object.assign({},d.t,{votes:Object.assign({},d.t.votes,{[ch.seat]:k})}));break}
   }
@@ -588,6 +607,7 @@ function checkPower(S,p){
       if("turned_zero" in kd&&C(S,u).turned)v=0;
     }return {v:Math.max(0,v),dn}});
   if("unique_power" in kd){const seen=new Set();contribs=contribs.filter(x=>{if(x.dn)return true;if(seen.has(x.v))return false;seen.add(x.v);return true})}
+  if("strongest_minus" in kd){const nd=contribs.filter(x=>!x.dn&&x.v>0);if(nd.length){const mx=nd.reduce((a,b)=>b.v>a.v?b:a);mx.v=Math.max(0,mx.v-+kd.strongest_minus[0])}}
   if("ignore_strongest" in kd){const nd=contribs.filter(x=>!x.dn);if(nd.length){const mx=nd.reduce((a,b)=>b.v>a.v?b:a);contribs.splice(contribs.indexOf(mx),1)}}
   const total=contribs.reduce((s,x)=>s+x.v,0)+p.mcheck+(p.boost||0)+(S.checkBonus||0);
   let need=m.power;const mk=mkd(S);
@@ -595,6 +615,8 @@ function checkPower(S,p){
   if("per_wound_total" in mk)need+=S.players.reduce((t,q)=>t+q.wounds.length,0)*+mk.per_wound_total[0];
   if("per_arm" in mk)need+=+mk.per_arm[0]*p.champs.reduce((s,u)=>s+C(S,u).arms.length,0);
   if("per_failed" in mk)need+=+mk.per_failed[0]*S.failedMonsters;
+  if("per_player" in mk)need+=+mk.per_player[0]*S.n;
+  if("per_trophy_minion" in mk)need+=+mk.per_trophy_minion[0]*p.trophy.filter(u=>ctype(S,u)==="Minion").length;
   if("plus_l1" in mk)need+=MONS[S.monsterPick[1]].power;
   {const lb=S.cfg["l"+S.monster+"_bonus_"+S.n+"p"];if(lb)need+=+lb;}
   return [total,need];
@@ -614,9 +636,9 @@ function reactions(S,i){
       q.champs.forEach(u=>{if(q.ralliedSet&&q.ralliedSet.includes(u))return;const ex=C(S,u).turned;
         if(!ex)opts.push({key:"y"+u,kind:"rally",u,label:`Rally: exhaust ${nm(S,u)} (+${cpower(S,q,u,false,true)})${aeg?", Aegis readies it after":""}`});
         else if(has(D(S,u),"aegis_hand"))opts.push({key:"y"+u,kind:"rally",u,label:`Aegis Rally: ${nm(S,u)} (+${cpower(S,q,u,false,true)}), then it returns to your hand`})})}
-    q.hand.forEach(u=>{if(has(D(S,u),"react_pump"))opts.push({key:"r"+u,kind:"rp",u,label:`Play ${nm(S,u)} on ${a.name}'s Champion (+${kv(D(S,u),"react_pump")})`})});
+    if(cryOk)q.hand.forEach(u=>{if(has(D(S,u),"react_pump"))opts.push({key:"r"+u,kind:"rp",u,label:`Support: play ${nm(S,u)} on ${a.name}'s Battle (+${kv(D(S,u),"react_pump")})`})});
     q.hand.forEach(u=>{if(has(D(S,u),"reaction"))opts.push({key:"c"+u,kind:"cta",u,label:`Play ${nm(S,u)} (all Champions +1)`})});
-    if("wish" in monster(S).kd&&!a.ignoreMon&&!q.wished)q.champs.forEach(u=>opts.push({key:"w"+u,kind:"wish",u,label:`Wish: Vanquish ${nm(S,u)} (+${cpower(S,q,u)})`}));
+    if("wish" in monster(S).kd&&!a.ignoreMon&&!q.wished)q.champs.forEach(u=>opts.push({key:"w"+u,kind:"wish",u,label:`Wish: Sacrifice ${nm(S,u)} (+${cpower(S,q,u)})`}));
     if(opts.length){
       const [tot,need]=checkPower(S,a);
       opts.push({key:"pass",label:"Pass"});
@@ -644,19 +666,26 @@ function monsterCheck(S){
   p.stats.battles=(p.stats.battles||0)+1;
   if(ok){
     p.wounds.push(L);S.woundsThis.push(p.idx);
-    log(S,`Battles ${m.name}: ${total} vs ${need}. Success, strikes a Mortal Wound.`,p.idx);
+    log(S,`Battles ${m.name}: ${total} vs ${need}. Success: Gains a Critical Hit.`,p.idx);
     (S.aegisDraw||[]).forEach(([qi,n])=>{draw(S,P(S,qi),n);S.rallyDraws=(S.rallyDraws||0)+1;log(S,`Draws ${n} for a successful Rally.`,qi)});
     (S.aegisHonor||[]).forEach(qi=>gainCommendation(S,P(S,qi),"Reward for helping"));
+    (S.supportLeader||[]).forEach(qi=>{const q=P(S,qi);log(S,`Support: gets the Level ${L} Guild Leader reward.`,qi);if(L===1)S.tasks.unshift({op:"banish",p:qi,n:1,where:["hand","discard"],opt:true});else if(L===2){if(S.supply.T5.length)q.discard.push(S.supply.T5.pop())}else q.bonusLead=(q.bonusLead||0)+3});
     if(p.selfComm){p.selfComm=false;gainCommendation(S,p,"Rift Lance or Cataclysm")}
     S.players.forEach(q=>{if(q===p)return;q.champs.forEach(u=>{if(has(D(S,u),"exalt")){const key=S.monster+":"+u;S.exalted=S.exalted||{};if(!S.exalted[key]){S.exalted[key]=1;gainCommendation(S,q,"Exalt")}}})});
     if(L===1&&!S.cfg.no_leader)S.tasks.unshift({op:"banish",p:p.idx,n:1,where:["hand","discard"],opt:true});
-    if(L===2&&!S.cfg.no_leader&&S.supply.T5.length){p.discard.push(S.supply.T5.pop());log(S,`Guild Leader reward: gains an Esteem.`,p.idx)}
+    if(L===2&&!S.cfg.no_leader){const g=S.n===1||!S.cfg.leader_unique?"Solo":p.guild;
+      if(g==="Warrior"){p.warL2=true;log(S,`Guild Leader reward: Warriors get +1 Power for the rest of the game.`,p.idx)}
+      else if(g==="Paladin"){if(S.cfg.pal_l2_discard){const pile=S.supply.T8;if(pile&&pile.length){p.discard.push(pile.pop());log(S,`Guild Leader reward: Acquires a Commendation.`,p.idx)}}else gainCommendation(S,p,"Guild Leader reward")}
+      else if(g==="Alchemist"){const c=S.arena.filter(u=>String(D(S,u).type).includes("Item")&&D(S,u).type!=="Champion Item"&&D(S,u).cost<=5);if(c.length)S.tasks.unshift({op:"freeItem",p:p.idx})}
+      else if(g==="Assassin"){if(S.supply.T5.length){p.hand.push(S.supply.T5.pop());log(S,`Guild Leader reward: Acquires an Esteem into hand.`,p.idx)}}
+      else if(g==="Necromancer"){for(let i=0;i<(S.cfg.necro_l2_tokens||2);i++)makeToken(S,p,"Z5")}
+      else if(S.supply.T5.length){p.discard.push(S.supply.T5.pop());log(S,`Guild Leader reward: Acquires an Esteem.`,p.idx)}}
   }else{
     log(S,`Battles ${m.name}: ${total} vs ${need}. Fails.`,p.idx);
     const dh=p.champs.some(u=>has(D(S,u),"divine_hand"))&&need-total<=3;
     if(dh)log(S,`Divine Hand: no Infamy.`,p.idx);else gainInfamy(S,p,"fail_infamy" in kd?+kd.fail_infamy[0]:1);
     if(!p.ignoreMon){
-      monsterStart(S,p);
+      if(!p.startDone)monsterStart(S,p);
       if("fail_vanq_weak" in kd)for(let i=0;i<+kd.fail_vanq_weak[0];i++)if(p.champs.length)vanquish(S,p,weakest(S,p,p.champs));
       if("knockout" in kd&&p.champs.length>=+kd.knockout[0])vanquish(S,p,strongest(S,p,p.champs));
       if("post_vanq_turned_le" in kd)p.champs.filter(u=>C(S,u).turned&&cpower(S,p,u)<=+kd.post_vanq_turned_le[0]&&!has(D(S,u),"dauntless")).forEach(u=>vanquish(S,p,u));
@@ -670,8 +699,8 @@ function monsterCheck(S){
     }
   }
   if(S.cfg.monster_battle_exhausts)p.champs.forEach(u=>C(S,u).turned=true);
-  S.checkBonus=0;p.boost=0;S.aegisDraw=[];S.aegisHonor=[];clearRally(S);
-  S.battleDone.push(p.idx);S.battleQueue.shift();
+  S.checkBonus=0;p.boost=0;S.aegisDraw=[];S.aegisHonor=[];S.supportLeader=[];clearRally(S);
+  S.battleDone.push(p.idx);S.battleQueue.shift();p.startDone=false;
   if(!S.battleQueue.length)resolveMonster(S);
 }
 function resolveMonster(S){
@@ -679,10 +708,10 @@ function resolveMonster(S){
   S.monsterResults[L]={name:m.name,defeated:allw,wounds:S.woundsThis.length};
   if(allw){
     const rid=S.cfg["group_reward_l"+L];
-    if(S.cfg.shared_comm&&S.n>1){log(S,`${m.name} is defeated! Everyone gains a Commendation.`);S.sharedRewards=(S.sharedRewards||0)+1;S.players.forEach(q=>gainCommendation(S,q,"Shared victory"));}
-    else log(S,`${m.name} is defeated! Everyone gains ${rid?DEFS[rid].name:"nothing"}.`);
+    if(S.cfg.shared_comm&&S.n>1){log(S,`${m.name} is driven back! Everyone Acquires a Commendation.`);S.sharedRewards=(S.sharedRewards||0)+1;S.players.forEach(q=>gainCommendation(S,q,"Shared victory"));}
+    else log(S,`${m.name} is driven back! Everyone Acquires ${rid?DEFS[rid].name:"nothing"}.`);
     if(rid&&!(S.cfg.shared_comm&&S.n>1))S.players.forEach(p=>{if(S.supply[rid]&&S.supply[rid].length)p.discard.push(S.supply[rid].pop())});
-  }else{S.failedMonsters++;log(S,`${m.name} survives with ${S.woundsThis.length} of ${S.n} Mortal Wounds and returns to the Rift.`)}
+  }else{S.failedMonsters++;log(S,`${m.name} survives with ${S.woundsThis.length} of ${S.n} Critical Hits and returns to the Rift.`)}
   S.monster=null;S.levelNext=L+1;S.battleQueue=null;
   if(L===3)requestEnd(S,"The Level 3 Monster battle is over.");
 }
@@ -695,6 +724,7 @@ function startTurn(S){
 }
 function endTurn(S){
   const p=P(S,S.turn);
+  if(S.cfg.refill_eot)refill(S,false,true);
   let extra=0;
   if(p.champs.some(u=>has(D(S,u),"galvanize"))&&!p.champs.some(u=>C(S,u).d==="Z6"))makeToken(S,p,"Z6");
   {const ep=p.champs.find(u=>has(D(S,u),"epiphany"));if(ep&&itemsCount(S,p)>=(kv(D(S,ep),"epiphany")||2))extra++}
@@ -703,7 +733,7 @@ function endTurn(S){
   (S.turnLog=S.turnLog||[]).push({r:S.round,seat:p.idx,left:p.infl});
   p.discard.push(...p.hand,...p.played);p.hand=[];p.played=[];
   S.players.forEach(q=>q.champs.forEach(u=>{if(C(S,u).arms.some(x=>has(D(S,x),"arm_indomitable")))C(S,u).turned=false}));
-  if(S.cfg.ready_at_start)p.champs.forEach(u=>{C(S,u).tmp=0});else{p.champs.forEach(u=>{C(S,u).turned=false;C(S,u).tmp=0});p.items.forEach(u=>C(S,u).turned=false)}
+  if(S.cfg.ready_at_start)p.champs.forEach(u=>{C(S,u).tmp=0;C(S,u).tmpM=0});else{p.champs.forEach(u=>{C(S,u).turned=false;C(S,u).tmp=0;C(S,u).tmpM=0});p.items.forEach(u=>C(S,u).turned=false)}
   p.boost=0;p.turnPower=0;p.utilCount=0;S.allPower=0;p.infl=0;
   draw(S,p,S.cfg.hand_size+extra);
   S.turnCount++;
@@ -759,7 +789,7 @@ function diplomacy(S,t){
   S.arena.splice(S.arena.indexOf(victim),1);log(S,t.voteOnly?`Diplomacy removes ${nm(S,victim)}.`:`Rift Tide sweeps away ${nm(S,victim)}.`);
   const extra=t.noExtra?0:(S.cfg["tide_extra_"+S.n+"p"]||0);
   for(let i=0;i<extra;i++)if(S.arena.length){const v=S.arena.shift();log(S,`Rift Tide sweeps away ${nm(S,v)}.`)}
-  refill(S);
+  refill(S,false,true);
   if(t.then==="start"){startTurn(S);return}
   if(t.then==="round"){S.round++;if(S.round>60){endGame(S,"Round limit reached.");return}startTurn(S);return}
   newRound(S);
@@ -782,7 +812,7 @@ function score(S){
     allCardsFull(S,p).forEach(u=>{const d=D(S,u);
       if(has(d,"ledger")&&tm>=kv(d,"ledger"))b.Abilities+=kv(d,"ledger",1);
       if(has(d,"opp_wound_prestige"))b.Abilities+=kv(d,"opp_wound_prestige")*woundedOpps(S,p)}); // each Mortal Wound is worth the number you own
-    b.Leader=S.cfg.no_leader?0:(p.wounds.includes(3)?3:0);
+    b.Leader=S.cfg.no_leader?0:(p.wounds.includes(3)?3:0)+(p.bonusLead||0);
     return {total:Object.values(b).reduce((s,x)=>s+x,0),b};
   });
 }
@@ -792,7 +822,7 @@ function endGame(S,why){
   S.over=true;S.choice=null;S.tasks=[];
   const sc=score(S);let elig=S.players.map(p=>p.idx);let note="";
   if(S.cfg.l3_fail_rule==="b"&&S.monsterResults[3]&&!S.monsterResults[3].defeated&&S.ascendBy==null){
-    const e=S.players.filter(p=>p.wounds.includes(3)).map(p=>p.idx);if(e.length){elig=e;note="Only Level III Mortal Wound holders can win."}}
+    const e=S.players.filter(p=>p.wounds.includes(3)).map(p=>p.idx);if(e.length){elig=e;note="Only Level III Critical Hit holders can win."}}
   const best=Math.max(...elig.map(i=>sc[i].total));
   const winners=elig.filter(i=>sc[i].total===best);
   S.result={why,scores:sc,winners,note};
@@ -816,6 +846,7 @@ function value(S,p,u){
     if(S.cfg.bot_champ_bonus&&(t==="Champion")&&d.guild&&d.guild!=="Militia")v+=S.cfg.bot_champ_bonus;
     if(late(S))v+=d.prestige*0.8;
     if(S.cfg.bot_attach&&d.guild===p.guild)v+=S.cfg.bot_attach;
+    if(String(d.type).includes("Armament")&&p.champs.some(x=>has(D(S,x),"arm_to_hand")))v+=2;
     if(S.cfg.bot_noise){if(S.salt===undefined)S.salt=(S.rng>>>0);let h=(2166136261^S.salt^(S.round*977+p.idx*131))>>>0;const k=String(u)+d.id;for(let i=0;i<k.length;i++)h=Math.imul(h^k.charCodeAt(i),16777619);v+=((h>>>0)/4294967296*2-1)*S.cfg.bot_noise}
   }
   return v;
@@ -838,6 +869,7 @@ function botChoose(S){
     case "windfall":return pick(o[0].key);
     case "sacItem":return pick(o.reduce((a,b)=>D(S,b.u).cost<D(S,a.u).cost?b:a).key);
     case "returnItem":return pick(o.reduce((a,b)=>D(S,b.u).cost<D(S,a.u).cost?b:a).key);
+    case "freeItem":{const l=o.filter(x=>x.u);return pick(l.length?l.reduce((a,b)=>D(S,b.u).cost>D(S,a.u).cost?b:a).key:"pass")}
     case "vanqChoice":case "sacrifice":{const l=o;return pick(l.reduce((a,b)=>cpower(S,p,b.u)<cpower(S,p,a.u)?b:a).key)}
     case "pump":{const un=o.filter(x=>!C(S,x.u).turned);const l=un.length?un:o;return pick(l.reduce((a,b)=>cpower(S,p,b.u)>cpower(S,p,a.u)?b:a).key)}
     case "transmuteItem":return pick("pass");
@@ -959,7 +991,7 @@ function renderSetup(){
   h+=`</div><div class="field"><label for="seed">Seed</label><input id="seed" inputmode="numeric" placeholder="Random" value="${esc(st.seed)}" data-a="seed" style="max-width:160px"><span class="muted" style="font-size:14px">Same seed, same shuffle</span></div>
   <div class="field"><label>Bot speed</label><div class="seg">${Object.keys(SPEEDS).map(k=>`<button class="${U.speed===k?"on":""}" data-a="speed" data-v="${k}">${k}</button>`).join("")}</div></div>
   <div class="acts"><button class="btn primary" data-a="start" style="min-width:160px">Start game</button></div>
-  <p class="muted" style="font-size:14px;margin-top:18px">Cards ${esc(HOE_DATA.version)}. Guilds must all differ. Each Mortal Wound is worth Prestige equal to the number you own.</p></div>`;
+  <p class="muted" style="font-size:14px;margin-top:18px">Cards ${esc(HOE_DATA.version)}. Guilds must all differ. Each Critical Hit is worth Prestige equal to the number you own.</p></div>`;
   $("#app").innerHTML=h;
 }
 function startGame(){
@@ -1053,7 +1085,7 @@ function render(){
   if(m){const q=s.battleQueue||[];
     h+=`<div class="sec monster"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><span style="font-size:13px;opacity:.8">Level ${m.level} Monster</span><h3 class="cz">${esc(m.name)}</h3></div><div class="pw">${m.power}</div></div>
     <div class="ab">${esc(m.ability)}</div><div class="pips">${s.players.map(p=>{const done=s.battleDone.includes(p.idx);const ok=s.woundsThis.includes(p.idx);const now=q[0]===p.idx;
-      return `<span class="pip ${done?(ok?"ok":"bad"):(now?"now":"")}">${esc(p.name)}${done?(ok?" wounded":" failed"):(now?" now":"")}</span>`}).join("")}</div></div>`}
+      return `<span class="pip ${done?(ok?"ok":"bad"):(now?"now":"")}">${esc(p.name)}${done?(ok?" hit":" failed"):(now?" now":"")}</span>`}).join("")}</div></div>`}
   else if(s.levelNext<=3){h+=`<p class="muted" style="font-size:14px;margin:10px 2px 0">Next portal opens the Level ${s.levelNext} Monster. Arena deck: ${s.arenaDeck.length} cards.</p>`}
   // opponents
   h+=`<div class="sec"><h2>Players <small>Prestige so far</small></h2>`;
@@ -1061,7 +1093,7 @@ function render(){
     const pw=p.champs.reduce((t,u)=>t+HOE.cpower(s,p,u),0);
     h+=`<details class="opp ${i===s.turn?"active":""}" data-i="${i}"><summary><span class="dot" style="--gc:${GC[p.guild]}"></span><span class="nm">${esc(p.name)} <span class="tag ${p.ctrl==="bot"?"bot":""}">${p.ctrl==="bot"?"Bot":"Person"}</span></span>
       <span class="meta">♥${pw} ★${scores[i].total} ${"✚".repeat(p.wounds.length)}</span></summary><div class="body">
-      <div class="muted" style="font-size:14px">${p.guild}. Hand ${p.hand.length}, deck ${p.deck.length}, discard ${p.discard.length}, Mortal Wounds ${p.wounds.length}.</div>
+      <div class="muted" style="font-size:14px">${p.guild}. Hand ${p.hand.length}, deck ${p.deck.length}, discard ${p.discard.length}, Critical Hits ${p.wounds.length}.</div>
       ${p.champs.length?`<div class="row" style="margin-top:6px">${p.champs.map(u=>cardHTML(u,{p,inplay:true,small:true})).join("")}</div>`:""}
       ${p.items.length?`<div class="row">${p.items.map(u=>cardHTML(u,{p,inplay:true,small:true})).join("")}</div>`:""}
       ${U.peek||p.ctrl==="human"&&humans()===1?`<div class="muted" style="font-size:14px">Hand</div><div class="row">${p.hand.map(u=>cardHTML(u,{small:true})).join("")||'<span class="muted">Empty</span>'}</div>`:""}
@@ -1083,7 +1115,7 @@ function render(){
   const vs=scores[U.view];const hideHand=passNeeded||(vp.ctrl==="bot"&&!U.peek)||(humans()>1&&isHuman(U.view)&&U.view!==a&&!s.over);
   const vpw=vp.champs.reduce((t,u)=>t+HOE.cpower(s,vp,u),0);
   h+=`<div class="you"><div class="hd"><span class="dot" style="--gc:${GC[vp.guild]};width:16px;height:16px"></span><h2 class="cz">${esc(vp.name)}</h2><span class="muted">${vp.guild}${vp.leaderSpent?"":", Leader discount ready"}</span></div>
-    <div class="stat"><div><b>${vp.infl}</b>Influence</div><div><b>${vpw}</b>Power</div><div><b>${vs.total}</b>Prestige</div><div><b>${vp.wounds.length}</b>Mortal Wounds</div></div>
+    <div class="stat"><div><b>${vp.infl}</b>Influence</div><div><b>${vpw}</b>Power</div><div><b>${vs.total}</b>Prestige</div><div><b>${vp.wounds.length}</b>Critical Hits</div></div>
     <div class="muted" style="font-size:14px">Deck ${vp.deck.length}, discard ${vp.discard.length}${vp.trophy.length?`, Trophies ${vp.trophy.length}`:""}. <button class="btn small" data-a="discard" style="min-height:30px;padding:0 8px">See discard</button></div>`;
   h+=`<div class="sec"><h2>Champions <small>${vp.champs.length}</small></h2><div class="row">${vp.champs.map(u=>cardHTML(u,{p:vp,inplay:true})).join("")||'<span class="muted">None in play</span>'}</div></div>`;
   if(vp.items.length)h+=`<div class="sec"><h2>Items</h2><div class="row">${vp.items.map(u=>cardHTML(u,{p:vp,inplay:true})).join("")}</div></div>`;
@@ -1139,15 +1171,15 @@ function sheetHTML(){
       if(where==="items"&&owner===tp&&d.type==="Armament"&&s.cfg.arm_equip)b+=`<button class="btn primary" data-a="equipitem" data-u="${u}" ${(tp.equippedThisTurn||[]).includes(u)||!tp.champs.length?"disabled":""}>Equip to a Champion</button>`;
       if(where==="items"&&owner===tp&&d.type==="Armament"&&HOE.cfg().equip_action&&tp.champs.length)b+=`<button class="btn primary" data-a="equiparm" data-u="${u}" ${c.eqTurn===s.turnCount?"disabled":""}>${c.eqTurn===s.turnCount?"Equipped this turn":"Equip"}</button>`;
       if((where==="items"||where==="champs")&&owner===tp&&d.keys.some(k=>k[0]==="util"))b+=`<button class="btn primary" data-a="util" data-u="${u}" ${c.turned?"disabled":""}>${c.turned?"Already used":"Utilize"}</button>`;
-      if((where==="arena"||where==="deck"||where==="other")&&o)b+=`<button class="btn primary" data-a="buy" data-u="${u}" ${o.ok?"":"disabled"}>${d.type==="Champion"?"Enlist":"Acquire"} for ${o.cost}</button>${o.ok?"":`<span class="muted" style="align-self:center">${D2(u).type==="Ascendancy"&&tp.wounds.length<2?"Needs 2 Mortal Wounds":"Not enough Influence"}</span>`}`;
-      if((where==="arena"||where==="town")&&t==="Minion")b+=`<button class="btn rift" data-a="fightopen" data-u="${u}">Battle this Minion (needs ${HOE.minionNeed(s,tp,u)})</button>`;
+      if((where==="arena"||where==="deck"||where==="other")&&o)b+=`<button class="btn primary" data-a="buy" data-u="${u}" ${o.ok?"":"disabled"}>${d.type==="Champion"?"Enlist":"Acquire"} for ${o.cost}</button>${o.ok?"":`<span class="muted" style="align-self:center">${D2(u).type==="Ascendancy"&&tp.wounds.length<2?"Needs 2 Critical Hits":"Not enough Influence"}</span>`}`;
+      if((where==="arena"||where==="town")&&t==="Minion")b+=`<button class="btn rift" data-a="fightopen" data-u="${u}">Fight this Minion (needs ${HOE.minionNeed(s,tp,u)})</button>`;
     }
     b+=`<button class="btn" data-a="closesheet">Close</button></div>`;
   }else if(sh.k==="fight"){
     const m=sh.u,tp=s.players[s.turn],need=HOE.minionNeed(s,tp,m);s.curMinion=m;
     const sel=U.fight||[];const tot=sel.reduce((t,u)=>t+HOE.cpower(s,tp,u,true),0);
-    b=`<h3 class="cz">Battle ${esc(CD(m).name)}</h3><p style="margin:4px 0">Needs ${need} Power${tp.boost?` (after +${tp.boost} boost)`:""}. Chosen Champions are exhausted.</p><div class="opts">`;
-    tp.champs.filter(u=>!s.cards[u].turned).forEach(u=>{b+=`<button class="opt ${sel.includes(u)?"on":""}" data-a="fsel" data-u="${u}"><span class="l">${esc(CD(u).name)}</span><span class="r">Power ${HOE.cpower(s,tp,u,true)} vs Minions</span></button>`});
+    b=`<h3 class="cz">Fight ${esc(CD(m).name)}</h3><p style="margin:4px 0">Needs ${need} Power${tp.boost?` (after +${tp.boost} boost)`:""}. Chosen Champions are exhausted.</p><div class="opts">`;
+    tp.champs.filter(u=>!s.cards[u].turned).forEach(u=>{b+=`<button class="opt ${sel.includes(u)?"on":""}" data-a="fsel" data-u="${u}"><span class="l">${esc(CD(u).name)}</span><span class="r">Power ${HOE.cpower(s,tp,u,true)} in a Fight</span></button>`});
     if(!tp.champs.some(u=>!s.cards[u].turned))b+=`<p class="muted">No ready Champions.</p>`;
     b+=`</div><div class="acts"><button class="btn primary" data-a="fightgo" ${tot>=need?"":"disabled"}>Defeat it (${tot} of ${need})</button><button class="btn" data-a="closesheet">Cancel</button></div>`;
   }else if(sh.k==="rules"){b=rulesHTML();
@@ -1175,18 +1207,20 @@ function D2(u){return CD(u)}
 function rulesHTML(){
   const par=Object.values(DEFS).find(d=>d.type==="Ascendancy");const cfg=HOE.cfg();
   const sec=(t,items)=>`<h3 class="cz" style="font-size:15px;margin-top:14px">${t}</h3><ul style="margin:6px 0 0;padding-left:20px">${items.map(i=>`<li style="margin:3px 0">${i}</li>`).join("")}</ul>`;
+  const tiers=String(cfg.solo_tier_names||"Bronze,Silver,Gold,Hero").split(",").map((n,i)=>n+" "+String(cfg.solo_tiers||"70,80,90,100").split(",")[i]).join(", ");
   return `<h3 class="cz">Quick rules</h3><p class="muted" style="margin:2px 0 0">Cards ${esc(HOE_DATA.version)}. Most Prestige at the end wins.</p>`+
-  sec("Your turn, in any order",["<b>Play cards</b> from your hand. Champions and Items stay in play.","<b>Utilize</b> each Item once: Exhaust it and use its ability.","<b>Equip</b> each Armament in play once: attach it to one of your Champions. A Champion can hold several.","<b>Battle Minions</b> with ready Champions. Their combined Power must equal or beat the Minion's.","<b>Battle the Monster</b> once, if one is out and you haven't yet.","<b>Acquire</b> cards with Influence. Acquiring a Champion is called <b>Enlisting</b>."])+
-  sec("Start and end of turn",["Start: ready all your Exhausted cards.","End: discard your hand and played cards, then draw 5."])+
-  sec("Champions",["Stay in play until Vanquished or Sacrificed.","<b>Exhausted Champions can't battle.</b> Battling Exhausts them. They ready at the start of your next turn."])+
-  sec("Minions",["Defeated Minions go to your Trophy pile and score their Prestige.","Some give Influence. Impact effects trigger when they enter the Arena.","Mutant Rats wait in the Town Center. Each Rat in your Trophy pile makes your next Rat +2 Power tougher. Hunter and Lethality don't work on them."])+
-  sec("Monsters",["Portal cards bring Monsters out: Level 1, then 2, then 3.","Everyone battles each Monster once, on their own turn, whenever they choose.","Add up your ready Champions' Power plus bonuses.","<b>Win:</b> take a Mortal Wound. The Monster's abilities don't hit you.","<b>Lose:</b> gain an Infamy and its abilities hit you.","If every player wins, everyone gains a Commendation (solo: Esteem or Renown)."])+
-  sec("Rally",["If you can't beat the Monster's Power, you may send a Rally cry.","Each other player may then Exhaust one ready Champion to add its Power.","If your battle succeeds, every player who Rallied draws cards equal to the Monster's Level (1, 2 or 3). If every player wounds the Monster, everyone gains a Commendation.","Aegis (Paladins): may Rally even while Exhausted, then returns to your hand. Its Armaments stay in play, unequipped."])+sec("Armaments",["Armaments are Items. Playing one Equips it to a Champion.","Equip: once during your turn, you may attach an unequipped Armament in play to one of your Champions. A Champion can carry more than one Armament."])+
-  sec("Rift Tide",["2 players: after every turn, Replace the bottom leftmost Arena card; the card passes left each turn.","3 to 5 players: the last player starts with the Rift Tide. The holder gains +1 Influence on their turn, then Replaces the bottom leftmost Arena card at the end of it. Pass it to the right each round."])+
-  sec("Game end",["The Level 3 Monster battle finishes, or someone Ascends by acquiring "+esc(par?par.name:"Paragon of the Accord")+(par?` (cost ${par.cost}, needs ${(par.kd.snitch||[2])[0]} Mortal Wounds)`:"")+".","Finish the round so everyone gets the same number of turns."])+
-  sec("Scoring",["Prestige on your cards, including Trophy Minions.","Each Mortal Wound is worth the number you own: 1 Wound = 1, 2 = 4, 3 = 9.","Guild Leader: +3 if you wounded the Level 3 Monster.","Infamy: "+(cfg.infamy_prestige||-2)+" each."])+
-  sec("Solo",["Use the Guild Identity card instead of a Guild Leader: once per game, Enlist any guild's Champion for 1 less.","Seed 20 cards (15 in Heroic mode). The Rift Tide fires after every turn.","Wound a Monster and it's defeated. Cards that help or count other players do nothing.","No loss: score Prestige. "+String(cfg.solo_tier_names||"Bronze,Silver,Gold,Hero").split(",").map((n,i)=>n+" "+String(cfg.solo_tiers||"70,80,90,100").split(",")[i]).join(", ")+"."])+
-  sec("Keywords",["<b>Exhaust:</b> turn sideways. Readies at the start of your turn.","<b>Banish:</b> remove from the game.","<b>Vanquish:</b> a Monster or card kills your Champion.","<b>Sacrifice:</b> you choose one of your Champions to kill.","<b>Replace:</b> remove an Arena card and refill."])+
+  sec("Your turn: do anything, in any order",["<b>Play cards</b> from your hand. Champions and Items stay in play.","<b>Utilize</b> each Item once: Exhaust it and use its ability.","<b>Equip</b> each Armament in play once: attach it to one of your Champions. A Champion can hold several.","<b>Fight Minions</b> with ready Champions. Their combined Power must equal or beat the Minion's.","<b>Battle the Monster</b> once, if one is out and you haven't yet.","<b>Acquire</b> cards from the Arena or Town Center with Influence. Acquiring a Champion or Militia is called <b>Enlisting</b>.","Mix and match: play a Power boost, Fight a Minion, use its Spoils to Acquire, then Battle."])+
+  sec("End of your turn",["Refill empty Arena slots now, not when a card is taken.","Discard your hand and played cards, then draw 5. Exhausted cards Ready at the start of your next turn."])+
+  sec("Champions",["Stay in play until Sacrificed. Sacrificed cards go to your discard pile, and their Armaments go with them.","<b>Exhausted Champions can't Fight or Battle.</b> Fighting and Battling Exhausts them."])+
+  sec("Minions",["Defeated Minions go to your Trophy pile and score their Prestige. <b>Spoils</b> is the reward for Defeating one.","<b>Impact</b> effects trigger when a Minion or Monster enters the Arena, and hit every player.","Arena Minions get +1 Power for each Monster that has left play.","Mutant Rats wait in the Town Center. Each Rat in your Trophy pile makes your next Rat +2 Power tougher. Hunter and Lethality don't work on them."])+
+  sec("Monsters",["Portal cards bring Monsters out: Level 1, then 2, then 3.","Everyone Battles each Monster once, on their own turn, whenever they choose.","Add up your ready Champions' Power plus bonuses.","<b>Start of Battle:</b> the Monster's start-of-Battle abilities hit you first, Sacrifices included. Then add up your Power.","<b>Win:</b> Gain a Critical Hit.","<b>Lose:</b> Gain an Infamy, and its 'if you fail' abilities hit you.","If every player wins, everyone Acquires a Commendation (solo: Esteem or Renown)."])+
+  sec("Rally cry and Support",["If you can't beat the Monster's Power, you may send a Rally cry.","Each other player may Exhaust one ready Champion to add its Power. If your Battle succeeds, each of them draws cards equal to the Monster's Level.","<b>Support:</b> during a Rally cry, other players may also play an Action with Support to add its Power and get its Support bonus. Support doesn't count as Rallying.","Aegis (Paladins): may Rally even while Exhausted, then returns to hand. Its Armaments stay in play, unequipped.","If every player lands a Critical Hit, everyone Acquires a Commendation."])+
+  sec("Guild Leaders",["Once per game, Enlist one of your guild's Champions for 1 less Influence.","Critical Hit rewards: Level I, Banish a card from your hand or discard pile. Level II, your guild's own reward (see your Leader). Level III, +3 Prestige at game end."])+
+  sec("Rift Tide",["2 players: after every turn, Replace the bottom leftmost Arena card; the card passes left each turn.","3 to 5 players: the last player starts with the Rift Tide. The holder gets +1 Influence on their turn, then Replaces the bottom leftmost Arena card at the end of it. Pass it to the right each round."])+
+  sec("Game end",["The Level 3 Monster Battle finishes, or someone Ascends by Acquiring "+esc(par?par.name:"Paragon of the Accord")+(par?` (cost ${par.cost}, needs ${(par.kd.snitch||[2])[0]} Critical Hits)`:"")+".","Finish the round so everyone gets the same number of turns."])+
+  sec("Scoring",["Prestige on your cards, including Trophy Minions.","Critical Hits are worth the number you own, squared: 1 = 1, 2 = 4, 3 = 9.","Guild Leader: +3 if you hit the Level 3 Monster.","Infamy: "+(cfg.infamy_prestige||-2)+" each."])+
+  sec("Solo",["Use the Guild Identity card instead of a Guild Leader: once per game, Enlist any guild's Champion for 1 less Influence.","Seed 20 cards (15 in Heroic mode). The Rift Tide fires after every turn.","Hit a Monster and it's driven back. Cards that help or count other players do nothing.","No loss: score Prestige. "+tiers+"."])+
+  sec("Keywords",["<b>Acquire:</b> take a card from the Arena or Town Center. <b>Enlist:</b> Acquire a Champion or Militia. <b>Gain:</b> receive anything else (Critical Hits, Infamy).","<b>Fight:</b> take on a Minion. <b>Battle:</b> take on a Monster.","<b>Exhaust:</b> turn sideways. Readies at the start of your turn.","<b>Sacrifice:</b> put one of your cards in play into your discard pile. You choose, unless the card names a target.","<b>Banish:</b> remove from the game.","<b>Replace:</b> remove an Arena card from the game; the slot refills at the end of the turn."])+
   `<div class="acts"><button class="btn primary" data-a="closesheet">Got it</button></div>`;
 }
 
