@@ -542,8 +542,8 @@ function fx(S,p,k){
     case "windfall":front.push({op:"windfall",p:p.idx});break;
     case "tokens":for(let i=0;i<a;i++)makeToken(S,p,"Z5");break;
     case "banish_hand2":front.push({op:"banish",p:p.idx,n:a,where:["hand"],opt:true});break;
-    case "pump":front.push({op:"pump",p:p.idx,n:a});break;
-    case "pump_minion":p.pendingPM=(p.pendingPM||0)+a;break;
+    case "pump":p.lastPump=null;front.push({op:"pump",p:p.idx,n:a});break;
+    case "pump_minion":if(p.lastPump!=null&&p.champs.includes(p.lastPump)){C(S,p.lastPump).tmpM=(C(S,p.lastPump).tmpM||0)+a;log(S,`${nm(S,p.lastPump)} gets +${a} more Power while it Fights a Minion this turn.`,p.idx)}p.lastPump=null;break;
     case "self_comm":p.selfComm=true;break;
     case "banish_disc":front.push({op:"banish",p:p.idx,n:a,where:["discard"],opt:true});break;
   }
@@ -572,7 +572,7 @@ function resolveChoice(S,key){
     case "windfall":{if(k==="pass")break;p.hand.splice(p.hand.indexOf(k),1);p.banishedN=(p.banishedN||0)+1;log(S,`Banishes a Sway.`,p.idx);if(S.supply.T5.length){p.hand.push(S.supply.T5.pop());log(S,`Acquires an Esteem into hand.`,p.idx)}break}
     case "sacItem":{if(p.items.includes(k))p.items.splice(p.items.indexOf(k),1);else p.champs.forEach(u=>{const ar=C(S,u).arms;if(ar.includes(k))ar.splice(ar.indexOf(k),1)});C(S,k).turned=false;p.discard.push(k);log(S,`Sacrifices ${nm(S,k)} to the discard pile.`,p.idx);break}
     case "returnItem":{p.items.splice(p.items.indexOf(k),1);C(S,k).turned=false;p.hand.push(k);log(S,`Returns ${nm(S,k)} to hand.`,p.idx);break}
-    case "pump":{if(p.pendingPM){C(S,k).tmpM=(C(S,k).tmpM||0)+p.pendingPM;p.pendingPM=0}C(S,k).tmp=(C(S,k).tmp||0)+d.n;log(S,`${nm(S,k)} gets +${d.n} Power this turn.`,p.idx);break}
+    case "pump":{p.lastPump=k;C(S,k).tmp=(C(S,k).tmp||0)+d.n;log(S,`${nm(S,k)} gets +${d.n} Power this turn.`,p.idx);break}
     case "sacrifice":{vanquish(S,p,k);[0,1].forEach(()=>{makeToken(S,p,"Z5");const x=p.champs[p.champs.length-1];if(x&&C(S,x).d==="Z5")C(S,x).turned=true});break}
     case "transmuteItem":{if(k==="pass")break;S.tasks.unshift({op:"transmuteChamp",p:p.idx,it:k});break}
     case "transmuteChamp":{p.items.splice(p.items.indexOf(d.it),1);const v=2*D(S,d.it).prestige;C(S,k).tmp=(C(S,k).tmp||0)+v;log(S,`Transmutes ${nm(S,d.it)}: ${nm(S,k)} gets +${v} Power this turn.`,p.idx);break}
@@ -722,7 +722,7 @@ function resolveMonster(S){
 function startTurn(S){
   const p=P(S,S.turn);resetTurn(p);if(S.cfg.tide_holder_infl&&S.n>=3&&S.cfg["tide_mode_"+S.n+"p"]==="rotate"&&tideHolderIdx(S)===p.idx){p.infl+=S.cfg.tide_holder_infl;S.tideBonus=(S.tideBonus||0)+1}if(S.cfg.tide_holder_draw&&S.n>=3&&tideHolderIdx(S)===p.idx){draw(S,p,S.cfg.tide_holder_draw)}if(S.cfg.seat_first_inf&&S.round===1){const v=String(S.cfg.seat_first_inf).split(",").map(Number);p.infl+=v[p.idx]||0}if(S.cfg.ready_at_start){p.champs.forEach(u=>C(S,u).turned=false);p.items.forEach(u=>C(S,u).turned=false)}S.allPower=0;S.checkBonus=0;
   if(S.monster&&S.battleQueue==null){S.battleQueue=[];for(let i=0;i<S.n;i++)S.battleQueue.push((S.turn+i)%S.n);S.battleDone=[]}
-  if(!S.monster&&S.levelNext<=3&&!S.arenaDeck.length){openMonster(S);S.battleQueue=[];for(let i=0;i<S.n;i++)S.battleQueue.push((S.turn+i)%S.n)}
+  if(!S.monster&&S.levelNext<=3&&!S.arenaDeck.length&&!((S.cfg.portal_cooldown||S.cfg.portal_cool_same)&&S.portalCool!=null&&S.round<=S.portalCool)){openMonster(S);S.battleQueue=[];for(let i=0;i<S.n;i++)S.battleQueue.push((S.turn+i)%S.n)}
   log(S,`Round ${S.round}: ${p.name}'s turn${isBattleTurn(S,p.idx)?" (battle turn vs "+monster(S).name+")":""}.`,p.idx);
 }
 function endTurn(S){
@@ -1090,7 +1090,7 @@ function render(){
     h+=`<div class="sec monster"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><span style="font-size:13px;opacity:.8">Level ${m.level} Monster</span><h3 class="cz">${esc(m.name)}</h3></div><div class="pw">${m.power}</div></div>
     <div class="ab">${esc(m.ability)}</div><div class="pips">${s.players.map(p=>{const done=s.battleDone.includes(p.idx);const ok=s.woundsThis.includes(p.idx);const now=q[0]===p.idx;
       return `<span class="pip ${done?(ok?"ok":"bad"):(now?"now":"")}">${esc(p.name)}${done?(ok?" hit":" failed"):(now?" now":"")}</span>`}).join("")}</div></div>`}
-  else if(s.levelNext<=3){h+=`<p class="muted" style="font-size:14px;margin:10px 2px 0">Next portal opens the Level ${s.levelNext} Monster. Arena deck: ${s.arenaDeck.length} cards.</p>`}
+  else if(s.levelNext<=3){h+=`<p class="muted" style="font-size:14px;margin:10px 2px 0">${s.portalCool!=null&&s.round<=s.portalCool&&s.n>1?`<b>Portal Cooldown:</b> portals do nothing through the end of round ${s.portalCool}. `:""}Next portal opens the Level ${s.levelNext} Monster. Arena deck: ${s.arenaDeck.length} cards.</p>`}
   // opponents
   h+=`<div class="sec"><h2>Players <small>Prestige so far</small></h2>`;
   s.players.forEach((p,i)=>{if(i===U.view)return;
