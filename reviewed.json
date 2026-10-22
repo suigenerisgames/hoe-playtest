@@ -1,5 +1,5 @@
 {
-"version": "v0.18",
+"version": "v0.21",
 "cards": {
 "ST1": {
 "h": "2fd932d87827",
@@ -54,19 +54,19 @@
 "keys": "first_cost:Armament:1"
 },
 "P2": {
-"h": "d9e6989fbaf9",
-"keys": "aegis_hand"
+"h": "8ee08fdca22e",
+"keys": "aegis_half"
 },
 "P3": {
 "h": "4d98748a5a88",
 "keys": "arm_to_hand"
 },
 "P4": {
-"h": "c43409e9286a",
+"h": "5affcf72e53b",
 "keys": "sacrosanct:2;opp_wound_power:1"
 },
 "P5": {
-"h": "fea1bc170675",
+"h": "b62492cc722f",
 "keys": "divine_hand:3;opp_wound_prestige:1"
 },
 "P6": {
@@ -74,8 +74,8 @@
 "keys": "vigil"
 },
 "P7": {
-"h": "050a92710aac",
-"keys": "sacrosanct:2;aegis_hand"
+"h": "7a65cd2a8897",
+"keys": "sacrosanct:2;aegis_half"
 },
 "P8": {
 "h": "b27389752983",
@@ -150,7 +150,7 @@
 "keys": "acq_banish:1"
 },
 "N2": {
-"h": "bdad94730c62",
+"h": "1fb0aac12678",
 "keys": "raise_dead_first"
 },
 "N3": {
@@ -162,7 +162,7 @@
 "keys": "blood_magic"
 },
 "N5": {
-"h": "f728d562f3d9",
+"h": "a466854d7c98",
 "keys": "acq_banish:2;raise_dead_first"
 },
 "N6": {
@@ -446,12 +446,16 @@
 "keys": "leader"
 },
 "L-Nec": {
-"h": "434d3202b684",
+"h": "1b9346bc275e",
 "keys": "leader"
 },
 "T13": {
 "h": "2f5410cb7ca3",
 "keys": "rat_scale:2;resilient"
+},
+"Z9": {
+"h": "3278581c2aec",
+"keys": ""
 }
 },
 "monsters": {
