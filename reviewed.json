@@ -1,5 +1,5 @@
 {
-"version": "v0.21",
+"version": "v0.22b",
 "cards": {
 "ST1": {
 "h": "2fd932d87827",
@@ -62,11 +62,11 @@
 "keys": "arm_to_hand"
 },
 "P4": {
-"h": "5affcf72e53b",
+"h": "4a603ae36fed",
 "keys": "sacrosanct:2;opp_wound_power:1"
 },
 "P5": {
-"h": "b62492cc722f",
+"h": "d8bb17535664",
 "keys": "divine_hand:3;opp_wound_prestige:1"
 },
 "P6": {
@@ -150,7 +150,7 @@
 "keys": "acq_banish:1"
 },
 "N2": {
-"h": "1fb0aac12678",
+"h": "1eccd38c1ce0",
 "keys": "raise_dead_first"
 },
 "N3": {
@@ -162,7 +162,7 @@
 "keys": "blood_magic"
 },
 "N5": {
-"h": "a466854d7c98",
+"h": "d8e60fbafa33",
 "keys": "acq_banish:2;raise_dead_first"
 },
 "N6": {

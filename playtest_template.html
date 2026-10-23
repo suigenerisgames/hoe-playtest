@@ -246,7 +246,7 @@ function minionReveal(S,u){
 }
 function equippedItems(S,p){const o=[];p.champs.forEach(u=>C(S,u).arms.forEach(a=>{if(DEFS[C(S,a).d].isItem)o.push(a)}));return o}
 function itemsCount(S,p){return p.items.length+equippedItems(S,p).length+p.champs.filter(u=>(C(S,u).d==="Z6"&&DEFS.Z6.type.includes("Item"))||(DEFS[C(S,u).d].isItem&&C(S,u).res==null)).length}
-function woundedOpps(S,p){return S.players.filter(q=>q!==p&&q.wounds.length>0).length}
+function woundedOpps(S,p){return S.cfg.opp_count_crits?S.players.filter(q=>q!==p).reduce((t,q)=>t+q.wounds.length,0):S.players.filter(q=>q!==p&&q.wounds.length>0).length}
 function gainCommendation(S,p,why){const pile=S.supply.T8;if(pile&&pile.length){p.trophy.push(pile.pop());log(S,`${why}: Acquires a Commendation into the Trophy pile.`,p.idx)}}
 function weakest(S,p,list){return list.reduce((a,b)=>cpower(S,p,b)<cpower(S,p,a)?b:a)}
 function strongest(S,p,list){return list.reduce((a,b)=>cpower(S,p,b)>cpower(S,p,a)?b:a)}
@@ -415,7 +415,8 @@ function defeatMinion(S,p,m,team){
   if(rz){C(S,m).res=d.prestige+kv(D(S,rz),"resurrect");p.discard.push(m);log(S,`${d.name} rises as a Champion with Power ${C(S,m).res} (Zombify).`,p.idx)}
   else p.trophy.push(m);
   if(team.some(u=>has(D(S,u),"raise_dead")))makeToken(S,p,"Z5");
-  if(p.minionCount===0)p.champs.filter(o=>has(D(S,o),"raise_dead_first")).forEach(()=>{makeToken(S,p,"Z5");const t=p.champs[p.champs.length-1];if(C(S,t).d==="Z5"&&!S.cfg.raise_ready)C(S,t).turned=true});
+  if(S.cfg.raise_any){const tk=S.round+":"+S.turn;S.players.forEach(q=>{if(q.raiseTk===tk)return;const rs=q.champs.filter(o=>has(D(S,o),"raise_dead_first"));if(!rs.length)return;q.raiseTk=tk;rs.forEach(()=>{makeToken(S,q,"Z5");const t=q.champs[q.champs.length-1];if(C(S,t).d==="Z5"&&!S.cfg.raise_ready)C(S,t).turned=true})})}
+  else if(p.minionCount===0)p.champs.filter(o=>has(D(S,o),"raise_dead_first")).forEach(()=>{makeToken(S,p,"Z5");const t=p.champs[p.champs.length-1];if(C(S,t).d==="Z5"&&!S.cfg.raise_ready)C(S,t).turned=true});
   p.minionCount++;
   p.champs.forEach(o=>{if(has(D(S,o),"alacrity_all")){draw(S,p,1);p.infl+=1}});
   if(!p.alacrity&&p.champs.some(o=>has(D(S,o),"alacrity"))){p.alacrity=true;draw(S,p,1)}
