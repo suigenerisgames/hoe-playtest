@@ -1,5 +1,5 @@
 {
-"version": "v0.22b",
+"version": "v0.24a",
 "cards": {
 "ST1": {
 "h": "2fd932d87827",
@@ -26,15 +26,15 @@
 "keys": "rally_guild:1"
 },
 "W3": {
-"h": "1b39d7e363fb",
-"keys": "dauntless"
+"h": "a200adcc927f",
+"keys": "adamantine"
 },
 "W4": {
 "h": "ba2391826b4d",
 "keys": "fight_draw"
 },
 "W5": {
-"h": "a149319d67e3",
+"h": "447639ad9454",
 "keys": "camaraderie;dauntless"
 },
 "W6": {
@@ -126,11 +126,11 @@
 "keys": "first_action_loot;vs_minion_add:1"
 },
 "S4": {
-"h": "e9221dfa0ebe",
+"h": "c22190872ef7",
 "keys": "alacrity;vs_minion_add:1"
 },
 "S5": {
-"h": "89deeee73cad",
+"h": "aa2a39b68dab",
 "keys": "action_inf_first:1;vs_minion_add:1;ledger:3:1"
 },
 "S6": {
@@ -142,8 +142,8 @@
 "keys": "lethality:3;pierce_all"
 },
 "S8": {
-"h": "a7780c3e3bc0",
-"keys": "lethality:3;alacrity_all"
+"h": "d4a39b8732d6",
+"keys": "lethality:3;alacrity_first_inf"
 },
 "N1": {
 "h": "fdfba9acc94a",
@@ -158,7 +158,7 @@
 "keys": "acq_arena_banish"
 },
 "N4": {
-"h": "60fe8b7cd583",
+"h": "c49215a7a6d0",
 "keys": "blood_magic"
 },
 "N5": {
@@ -166,15 +166,15 @@
 "keys": "acq_banish:2;raise_dead_first"
 },
 "N6": {
-"h": "9c205b51b942",
+"h": "f1cac56197ca",
 "keys": "resurrect:0"
 },
 "N7": {
-"h": "152ac4e8f13e",
+"h": "989cd855e0cb",
 "keys": "play_sacrifice;undead_bonus:1"
 },
 "N8": {
-"h": "8d10530d0a88",
+"h": "3898da850ca9",
 "keys": "infamy_immune;blood_magic"
 },
 "I1": {
@@ -218,8 +218,8 @@
 "keys": "cost:All:1"
 },
 "I11": {
-"h": "1bec10386ce3",
-"keys": "acq_draw_first;enlist_draw_first"
+"h": "05e36b751109",
+"keys": "acq_draw:99"
 },
 "I12": {
 "h": "6aeb376d2d03",
@@ -250,7 +250,7 @@
 "keys": "arm:2;arm_protect"
 },
 "R7": {
-"h": "72f675829f5c",
+"h": "3d659d4015cd",
 "keys": "arm:2;arm_indomitable"
 },
 "R8": {
@@ -258,11 +258,11 @@
 "keys": "arm:8"
 },
 "C1": {
-"h": "22c43f179518",
-"keys": "inf:1;draw_if_minion"
+"h": "51477fadcb3e",
+"keys": "inf:1;pump:2;draw_if_minion;exigent"
 },
 "C3": {
-"h": "e2060d059cfe",
+"h": "7814df098774",
 "keys": "draw:2;discard:1"
 },
 "C5": {
@@ -274,11 +274,11 @@
 "keys": "inf:2;arena_replace"
 },
 "C7": {
-"h": "20c0ab98e3dc",
+"h": "82d1ef998bba",
 "keys": "draw:2"
 },
 "C8": {
-"h": "9ab652397671",
+"h": "3fe11e49daee",
 "keys": "inf:1;draw:1"
 },
 "C9": {
@@ -286,27 +286,27 @@
 "keys": "nextcost:Champion:3"
 },
 "C10": {
-"h": "d65da48283a1",
+"h": "190c3fb07af4",
 "keys": "inf:2;draw:1"
 },
 "C11": {
-"h": "d484cdad75c9",
-"keys": "draw:1;refresh_items"
+"h": "af97621d7760",
+"keys": "draw:1;refresh_items;power:1;exigent"
 },
 "C12": {
-"h": "2cfe7eea8a5c",
+"h": "7643dd539272",
 "keys": "draw:3"
 },
 "M1": {
-"h": "0abeead3fd6b",
-"keys": "pump:4;draw:1;react_pump:4;react_banish"
+"h": "a51737501268",
+"keys": "pump:3;draw:1;react_pump:3;react_banish;exigent"
 },
 "M2": {
-"h": "ed972f6ea907",
-"keys": "pump:2;pump_minion:3;react_pump:2;react_return"
+"h": "d6d56a6eb72b",
+"keys": "pump:4;draw:1;react_pump:4;react_top;exigent"
 },
 "M5": {
-"h": "0f59aba62a8a",
+"h": "a8f823de4dec",
 "keys": "draw:1;banish_hand:1;inf:2"
 },
 "M6": {
@@ -314,12 +314,12 @@
 "keys": "tokens:2"
 },
 "M7": {
-"h": "e9e146725247",
-"keys": "pump:6;react_pump:6;react_comm"
+"h": "7a9e2b055e8b",
+"keys": "pump:6;draw:1;react_pump:6;react_comm;exigent"
 },
 "M8": {
-"h": "d3e5b69da44f",
-"keys": "draw:1;pump:8;react_pump:8;react_leader"
+"h": "57b365331156",
+"keys": "pump:8;draw:1;react_pump:8;react_knight;exigent"
 },
 "X1": {
 "h": "c6ff51b7efd5",
@@ -398,7 +398,7 @@
 "keys": ""
 },
 "T10": {
-"h": "3ab3f02c1d70",
+"h": "23e9622bc862",
 "keys": "draw:1;banish_hand:1"
 },
 "T12": {
@@ -472,7 +472,7 @@
 "keys": "armor:1"
 },
 "Magmatic Ooze": {
-"h": "58216a0bd10a",
+"h": "aa696528d1b1",
 "keys": "reveal_sac_le:3;min_contrib:2"
 },
 "The Dark Knight": {
@@ -496,28 +496,28 @@
 "keys": "start_vanq_choice_ge:3"
 },
 "Spectral Gravehound": {
-"h": "9e0e60ed7415",
+"h": "0b964716e9b7",
 "keys": "min_contrib:3"
 },
 "Black Dragon of Nazryth": {
-"h": "76ede5264742",
-"keys": "armor:1;reveal_vanq_weak"
+"h": "788d4ecc1166",
+"keys": "armor:1;armor_ifc:10:1;reveal_vanq_weak"
 },
 "Chaotic Adjudicator": {
-"h": "ba65c2e46fcc",
+"h": "1bfa0efd4f56",
 "keys": "start_vanq_strong_le:6;fail_infamy:2;reveal_vanq_weak"
 },
 "Djinn of the Infinite": {
-"h": "2fab4717c4c2",
+"h": "5c756b166998",
 "keys": "djinn_trophy"
 },
 "Forlox, the Conjurer": {
-"h": "e0d855977dcd",
+"h": "3a715007cada",
 "keys": "plus_l1"
 },
 "Unspeakable Horror": {
-"h": "3b23f5301c75",
-"keys": "unique_power"
+"h": "da3e2669f53a",
+"keys": "keep_strongest:3;no_rally"
 }
 }
 }

@@ -198,7 +198,7 @@ function newGame(opts){
   run(S);
   return S;
 }
-function resetTurn(p){Object.assign(p,{infl:0,turnPower:0,mcheck:0,boost:0,firstUsed:{},nextcost:{},bmUsed:false,acqDraws:0,alacrity:false,
+function resetTurn(p){Object.assign(p,{infl:0,turnPower:0,mcheck:0,boost:0,firstUsed:{},nextcost:{},bmUsed:false,acqDraws:0,alacrity:false,alacrityX:false,
   utilCount:0,equippedThisTurn:[],selfComm:false,firstActInf:false,minionCount:0,acqFirst:false,enlistFirst:false,fightDraw:false,firstActionDraw:false,ignoreMon:false,bounty:false,champDraw:false,disentombed:false,battled:false})}
 function draw(S,p,n){let k=0;for(let i=0;i<n;i++){if(!p.deck.length){if(!p.discard.length)break;p.deck=p.discard;p.discard=[];shuffle(S,p.deck)}p.hand.push(p.deck.pop());k++}return k}
 function monster(S){return S.monster?MONS[S.monsterPick[S.monster]]:null}
@@ -239,7 +239,7 @@ function minionReveal(S,u){
   else if(k[0]==="arena_banish"){const o=S.arena.filter(x=>x!==u);if(o.length){const v=o.reduce((a,b)=>D(S,b).cost<D(S,a).cost?b:a);S.arena.splice(S.arena.indexOf(v),1);log(S,`${nm(S,v)} is Banished from the Arena.`)}}
   else if(k[0]==="each_draw"){S.players.forEach(p=>draw(S,p,+k[1]||1))}
   else if(k[0]==="most_sacrifice"){const mx=Math.max(...S.players.map(p=>p.champs.length));if(mx>0)S.players.forEach(p=>{if(p.champs.length===mx)S.tasks.unshift({op:"sacAny",p:p.idx,why:d.name})})}
-  else if(k[0]==="sacrifice_item"){S.players.forEach(p=>{if(p.items.length)S.tasks.unshift({op:"sacItem",p:p.idx,why:d.name})})}
+  else if(k[0]==="sacrifice_item"){S.players.forEach(p=>{if(itemsCount(S,p)>0)S.tasks.unshift({op:"sacItem",p:p.idx,why:d.name})})}
   else if(k[0]==="return_item"){S.players.forEach(p=>{if(p.items.length)S.tasks.unshift({op:"returnItem",p:p.idx,why:d.name})})}
   else if(k[0]==="vanq_choice_nonmilitia"){S.players.forEach(p=>{if(p.champs.some(x=>D(S,x).guild!=="Militia"))S.tasks.unshift({op:"vanqNonMil",p:p.idx,why:d.name})})}
   else if(k[0]==="discard"){S.players.forEach(p=>{if(p.hand.length)S.tasks.unshift({op:"discard",p:p.idx,n:1,why:d.name})})}
@@ -321,7 +321,7 @@ function acquirable(S,p){
   S.arena.forEach(u=>{if(ctype(S,u)!=="Minion")out.push({u,from:"arena"})});
   Object.keys(S.supply).forEach(id=>{const pile=S.supply[id];if(pile.length&&DEFS[id].type!=="Minion")out.push({u:pile[pile.length-1],from:"supply"})});
   if(hasCrown(S,p)&&S.arenaDeck.length){const u=S.arenaDeck[S.arenaDeck.length-1];if(ctype(S,u)!=="Minion")out.push({u,from:"deck"})}
-  return out.map(o=>{o.cost=cost(S,p,o.u);o.ok=o.cost<=p.infl&&!(D(S,o.u).type==="Ascendancy"&&p.wounds.length<kv(D(S,o.u),"snitch"));return o});
+  return out.map(o=>{o.cost=cost(S,p,o.u);o.ok=o.cost<=p.infl&&!(S.cfg.exigent_lock&&S.monster&&exigentCards(S).includes(o.u))&&!(D(S,o.u).type==="Ascendancy"&&p.wounds.length<kv(D(S,o.u),"snitch"));return o});
 }
 function minionPower(S,m){const d=D(S,m);let v=d.power;if(S.cfg.minion_scale&&S.arena.includes(m))v+=S.cfg.minion_scale*Math.max(0,(S.levelNext||1)-1);if(has(d,"wound_boost")&&S.players.some(q=>q.wounds.length))v+=kv(d,"wound_boost");return v}
 function minionNeed(S,p,m){const d=D(S,m);let v=minionPower(S,m);if(has(d,"rat_scale"))v+=kv(d,"rat_scale")*p.trophy.filter(x=>C(S,x).d===d.id).length;return v-(p.boost||0)}
@@ -368,11 +368,12 @@ function apply(S,a){
     case "transmute":{
       if(!p.champs.some(u=>has(D(S,u),"item_sac"))||!p.items.length)return false;
       S.tasks.push({op:"transmuteItem",p:p.idx});break}
+    case "exigent":{if(!exigentOk(S,p,a.u))return false;exigentManual(S,p,a.u);break}
     case "faceMonster":{
       if(!isBattleTurn(S,p.idx)||p.battled)return false;
-      p.battled=true;S.tasks.push({op:"bstart"},{op:"reactions",i:1},{op:"transmute"},{op:"check"});break}
+      p.battled=true;S.tasks.push({op:"bstart"},{op:"reactions",i:1},{op:"transmute"},{op:"exigent"},{op:"check"});break}
     case "endTurn":{
-      if(isBattleTurn(S,p.idx)&&!p.battled){p.battled=true;S.tasks.push({op:"bstart"},{op:"reactions",i:1},{op:"transmute"},{op:"check"})}
+      if(isBattleTurn(S,p.idx)&&!p.battled){p.battled=true;S.tasks.push({op:"bstart"},{op:"reactions",i:1},{op:"transmute"},{op:"exigent"},{op:"check"})}
       S.tasks.push({op:"endTurn"});break}
     default:return false;
   }
@@ -418,7 +419,7 @@ function defeatMinion(S,p,m,team){
   if(S.cfg.raise_any){const tk=S.round+":"+S.turn;S.players.forEach(q=>{if(q.raiseTk===tk)return;const rs=q.champs.filter(o=>has(D(S,o),"raise_dead_first"));if(!rs.length)return;q.raiseTk=tk;rs.forEach(()=>{makeToken(S,q,"Z5");const t=q.champs[q.champs.length-1];if(C(S,t).d==="Z5"&&!S.cfg.raise_ready)C(S,t).turned=true})})}
   else if(p.minionCount===0)p.champs.filter(o=>has(D(S,o),"raise_dead_first")).forEach(()=>{makeToken(S,p,"Z5");const t=p.champs[p.champs.length-1];if(C(S,t).d==="Z5"&&!S.cfg.raise_ready)C(S,t).turned=true});
   p.minionCount++;
-  p.champs.forEach(o=>{if(has(D(S,o),"alacrity_all")){draw(S,p,1);p.infl+=1}});
+  p.champs.forEach(o=>{if(has(D(S,o),"alacrity_all")){draw(S,p,1);p.infl+=1}});if(!p.alacrityX&&p.champs.some(o=>has(D(S,o),"alacrity_first_inf"))){p.alacrityX=true;p.champs.filter(o=>has(D(S,o),"alacrity_first_inf")).forEach(()=>{draw(S,p,1);p.infl+=1})}
   if(!p.alacrity&&p.champs.some(o=>has(D(S,o),"alacrity"))){p.alacrity=true;draw(S,p,1)}
   if(p.bounty){p.bounty=false;draw(S,p,1)}
   if(!p.fightDraw&&(p.champs.some(o=>has(D(S,o),"fight_draw"))||team.some(u=>C(S,u).arms.some(a=>has(D(S,a),"arm_fight_draw"))))){p.fightDraw=true;draw(S,p,1)}
@@ -485,7 +486,7 @@ function exec(S,t){
     case "freeItem":{const c=S.arena.filter(u=>String(D(S,u).type).includes("Item")&&D(S,u).type!=="Champion Item"&&D(S,u).cost<=5);if(!c.length)return;ask(S,p.idx,"freeItem","Guild Leader reward: Acquire an Item costing 5 or less for no cost",c.map(u=>({key:u,u})).concat([{key:"pass",label:"No thanks"}]));return}
     case "sacLe":{const c=p.champs.filter(u=>cpower(S,p,u)<=t.le);if(!c.length)return;ask(S,p.idx,"vanqChoice",`${t.why}: Sacrifice one of your Champions with Power ${t.le} or less`,c.map(u=>({key:u,u})));return}
       case "sacAny":{if(!p.champs.length)return;ask(S,p.idx,"vanqChoice",`${t.why}: Sacrifice one of your Champions`,p.champs.map(u=>({key:u,u})));return}
-    case "sacItem":{const pool=p.items.concat(equippedItems(S,p));if(!pool.length)return;ask(S,p.idx,"sacItem",`${t.why}: Sacrifice one of your Items in play (it goes to your discard pile)`,pool.map(u=>({key:u,u})));return}
+    case "sacItem":{const pool=p.items.concat(equippedItems(S,p)).concat(p.champs.filter(u=>String(D(S,u).type).includes("Item")||D(S,u).isItem));if(!pool.length)return;ask(S,p.idx,"sacItem",`${t.why}: Sacrifice one of your Items in play (it goes to your discard pile)`,pool.map(u=>({key:u,u})));return}
     case "returnItem":{if(!p.items.length)return;ask(S,p.idx,"returnItem",`${t.why}: return one of your Items in play to your hand`,p.items.map(u=>({key:u,u})));return}
     case "pump":{if(!p.champs.length)return;ask(S,p.idx,"pump",`Give a Champion +${t.n} Power this turn`,p.champs.map(u=>({key:u,u})),{n:t.n});return}
     case "sacrifice":{const el=p.champs.filter(u=>D(S,u).guild!=="Militia"&&!D(S,u).type.endsWith("Token"));if(!el.length){log(S,`No eligible Champion to Sacrifice.`,p.idx);return}
@@ -510,6 +511,10 @@ function exec(S,t){
         log(S,`Make a Wish: ${nm(S,u)} goes to the Trophy pile.`,p0.idx);
         if(arms.length){if(p0.champs.length){const st=strongest(S,p0,p0.champs);arms.forEach(a=>C(S,st).arms.push(a))}else arms.forEach(a=>p0.discard.push(a))}}
       return}
+    case "exigent":{if(!S.cfg.exigent)break;const a=P(S,S.turn);
+      if(a.ctrl!=="bot"&&!S.cfg.exigent_auto){const [t0,n0]=checkPower(S,a);if(t0>=n0)break;const cs=exigentCards(S).filter(u=>exigentOk(S,a,u));if(!cs.length)break;
+        ask(S,a.idx,"exigentPick",`You're short (${t0} of ${n0}). Use an Exigent card from the Arena?`,cs.map(u=>({key:u,u,label:`${nm(S,u)} (pay ${exigentCost(S,u)})`})).concat([{key:"pass",label:"No, Battle as is"}]),{});return}
+      exigentTry(S,a);break}
     case "check":return monsterCheck(S);
     case "equipFromPlay":{if(!p.items.includes(t.u)||!p.champs.length)return;ask(S,p.idx,"equipFromPlay",`Equip ${nm(S,t.u)} to which Champion?`,p.champs.map(u=>({key:u,u})).concat([{key:"pass",label:"Cancel"}]),{a:t.u});return}
     case "transmuteChamp":{if(!p.items.includes(t.it))return;ask(S,p.idx,"transmuteChamp",`Which Champion gets +${2*D(S,t.it).prestige} Power?`,p.champs.map(u=>({key:u,u})),{it:t.it});return}
@@ -569,9 +574,10 @@ function resolveChoice(S,key){
     case "arenaReplace":{if(!S.arena.includes(k)){S.choice=ch;return}S.arena.splice(S.arena.indexOf(k),1);log(S,`Replaces ${nm(S,k)} in the Arena.`,p.idx);refill(S);break}
     case "recurArm":{if(k==="pass")break;p.discard.splice(p.discard.indexOf(k),1);S.tasks.unshift({op:"equip",p:p.idx,u:k});break}
     case "vanqChoice":{vanquish(S,p,k);break}
+    case "exigentPick":{if(k==="pass")break;if(!exigentOk(S,p,k)){S.choice=ch;return}exigentManual(S,p,k);break}
     case "freeItem":{if(k==="pass")break;if(!S.arena.includes(k)){S.choice=ch;return}acquire(S,p,k,"arena");log(S,`Guild Leader reward: Acquires ${nm(S,k)} for no cost.`,p.idx);break}
     case "windfall":{if(k==="pass")break;p.hand.splice(p.hand.indexOf(k),1);p.banishedN=(p.banishedN||0)+1;log(S,`Banishes a Sway.`,p.idx);if(S.supply.T5.length){p.hand.push(S.supply.T5.pop());log(S,`Acquires an Esteem into hand.`,p.idx)}break}
-    case "sacItem":{if(p.items.includes(k))p.items.splice(p.items.indexOf(k),1);else p.champs.forEach(u=>{const ar=C(S,u).arms;if(ar.includes(k))ar.splice(ar.indexOf(k),1)});C(S,k).turned=false;p.discard.push(k);log(S,`Sacrifices ${nm(S,k)} to the discard pile.`,p.idx);break}
+    case "sacItem":{if(p.champs.includes(k)){vanquish(S,p,k);break}if(p.items.includes(k))p.items.splice(p.items.indexOf(k),1);else p.champs.forEach(u=>{const ar=C(S,u).arms;if(ar.includes(k))ar.splice(ar.indexOf(k),1)});C(S,k).turned=false;p.discard.push(k);log(S,`Sacrifices ${nm(S,k)} to the discard pile.`,p.idx);break}
     case "returnItem":{p.items.splice(p.items.indexOf(k),1);C(S,k).turned=false;p.hand.push(k);log(S,`Returns ${nm(S,k)} to hand.`,p.idx);break}
     case "pump":{p.lastPump=k;C(S,k).tmp=(C(S,k).tmp||0)+d.n;log(S,`${nm(S,k)} gets +${d.n} Power this turn.`,p.idx);break}
     case "sacrifice":{vanquish(S,p,k);[0,1].forEach(()=>{makeToken(S,p,"Z5");const x=p.champs[p.champs.length-1];if(x&&C(S,x).d==="Z5")C(S,x).turned=true});break}
@@ -593,7 +599,7 @@ function resolveChoice(S,key){
         if(S.cfg.rally_draw_any&&!p.rallyDrew){p.rallyDrew=true;draw(S,p,S.cfg.rally_draw_any);S.rallyDraws=(S.rallyDraws||0)+1;log(S,`Draws ${S.cfg.rally_draw_any} for Rallying.`,p.idx)}
         const aeg=p.champs.some(x=>has(D(S,x),"rally_ready"));if(!aeg)C(S,opt.u).turned=true;
         log(S,`Rallies ${nm(S,opt.u)} to ${pname(S,S.turn)}'s battle: +${v} Power${aeg?" (Aegis: it readies)":""}.`,p.idx)}
-      else if(opt.kind==="rp"){p.hand.splice(p.hand.indexOf(opt.u),1);if(has(D(S,opt.u),"react_return"))p.hand.push(opt.u);else if(!(S.cfg.magic_single_use&&D(S,opt.u).type==="Action - Magic"))p.discard.push(opt.u);const v=kv(D(S,opt.u),"react_pump");if(has(D(S,opt.u),"react_banish"))S.tasks.unshift({op:"banish",p:p.idx,n:1,where:["hand","discard"],opt:true});if(has(D(S,opt.u),"react_leader"))(S.supportLeader=S.supportLeader||[]).push(p.idx);S.supportPlays=(S.supportPlays||0)+1;S.checkBonus+=v;log(S,`Support: plays ${nm(S,opt.u)} on ${pname(S,S.turn)}'s Battle: +${v} Power.`,p.idx);if(has(D(S,opt.u),"react_comm"))(S.aegisHonor=S.aegisHonor||[]).push(p.idx)}
+      else if(opt.kind==="rp"){p.hand.splice(p.hand.indexOf(opt.u),1);if(has(D(S,opt.u),"react_return"))p.hand.push(opt.u);else if(has(D(S,opt.u),"react_top")){draw(S,p,1);p.deck.push(opt.u);log(S,`Draws a card, then puts ${nm(S,opt.u)} on top of their deck.`,p.idx)}else if(!(S.cfg.magic_single_use&&D(S,opt.u).type==="Action - Magic"))p.discard.push(opt.u);const v=kv(D(S,opt.u),"react_pump");if(has(D(S,opt.u),"react_banish"))S.tasks.unshift({op:"banish",p:p.idx,n:1,where:["hand","discard"],opt:true});if(has(D(S,opt.u),"react_leader"))(S.supportLeader=S.supportLeader||[]).push(p.idx);if(has(D(S,opt.u),"react_knight"))(S.supportKnight=S.supportKnight||[]).push(p.idx);S.supportPlays=(S.supportPlays||0)+1;S.checkBonus+=v;log(S,`Support: plays ${nm(S,opt.u)} on ${pname(S,S.turn)}'s Battle: +${v} Power.`,p.idx);if(has(D(S,opt.u),"react_comm"))(S.aegisHonor=S.aegisHonor||[]).push(p.idx)}
       else if(opt.kind==="cta"){p.hand.splice(p.hand.indexOf(opt.u),1);p.discard.push(opt.u);S.allPower+=1;log(S,`Plays Call to Arms during ${pname(S,S.turn)}'s check. All Champions get +1 Power.`,p.idx)}
       else if(opt.kind==="wish"){const v=cpower(S,p,opt.u);S.checkBonus+=v;log(S,`Sacrifices ${nm(S,opt.u)} to add ${v} Power (Make a Wish).`,p.idx);vanquish(S,p,opt.u);p.wished=true}
       S.tasks.unshift({op:"reactions",i:nextI});break}
@@ -602,15 +608,37 @@ function resolveChoice(S,key){
 }
 // ---------- monster battle ----------
 function mkd(S){const m=monster(S);if(!("plus_l1" in m.kd))return m.kd;const k=Object.assign({},MONS[S.monsterPick[1]].kd,m.kd);delete k.reveal_sac;return k}
+function exigentCost(S,u){return Math.max(0,D(S,u).cost+(S.cfg.exigent_delta||0))}
+function exigentCards(S){return S.arena.filter(u=>has(D(S,u),"exigent")||(S.cfg.exigent_pump&&ctype(S,u).startsWith("Action")&&has(D(S,u),"pump")))}
+function exigentUse(S,p,u,k){const d=D(S,u),c=exigentCost(S,u);p.infl-=c;p.exigentTk=S.turnCount;if(!S.cfg.exigent_stay)S.arena.splice(S.arena.indexOf(u),1);p.banishedN=p.banishedN||0;
+  if(has(d,"pump"))C(S,k).tmp=(C(S,k).tmp||0)+kv(d,"pump");if(has(d,"power"))p.turnPower+=kv(d,"power");if(has(d,"inf"))p.infl+=kv(d,"inf");if(has(d,"draw"))draw(S,p,kv(d,"draw"));if(has(d,"refresh_items"))p.items.forEach(x=>C(S,x).turned=false);if(has(d,"draw_if_minion")&&p.minionCount>0)draw(S,p,1);S.exigentUses=(S.exigentUses||0)+1;(S.exigentLog=S.exigentLog||[]).push({L:S.monster,id:d.id,cost:c,seat:p.idx});
+  log(S,`Exigent: pays ${c} Influence to use ${d.name} from the Arena. ${has(d,"pump")?nm(S,k)+" gets +"+kv(d,"pump")+" Power.":"Your Champions get +"+kv(d,"power")+" Power this turn."} ${S.cfg.exigent_stay?"It stays in the Arena.":d.name+" is Banished."}`,p.idx)}
+function exigentOk(S,p,u){return !!(S.cfg.exigent&&S.monster&&S.turn===p.idx&&exigentCards(S).includes(u)&&exigentCost(S,u)<=p.infl&&!(S.cfg.exigent_once&&p.exigentTk===S.turnCount))}
+function exigentManual(S,p,u){const d=D(S,u),c=exigentCost(S,u);p.infl-=c;p.exigentTk=S.turnCount;if(!S.cfg.exigent_stay)S.arena.splice(S.arena.indexOf(u),1);
+  S.exigentUses=(S.exigentUses||0)+1;(S.exigentLog=S.exigentLog||[]).push({L:S.monster,id:d.id,cost:c,seat:p.idx});
+  log(S,`Exigent: pays ${c} Influence to use ${d.name} from the Arena.${S.cfg.exigent_stay?" It stays in the Arena.":""}`,p.idx);
+  const ks=d.keys.filter(k=>!String(k[0]).startsWith("react_")&&k[0]!=="exigent");S.tasks.unshift(...effects(p.idx,ks,false))}
+function exigentTry(S,p){
+  if(!S.monster||(S.cfg.exigent_once&&p.exigentTk===S.turnCount))return false;let [t,n]=checkPower(S,p);if(t>=n)return false;
+  const ch=p.champs.filter(u=>!(S.cfg.exhausted_no_battle&&C(S,u).turned));if(!ch.length)return false;
+  const cs=exigentCards(S).filter(u=>exigentCost(S,u)<=p.infl).sort((a,b)=>exigentCost(S,a)-exigentCost(S,b));
+  for(const u of cs){const dd=D(S,u);if(!has(dd,"pump")){const v=kv(dd,"power");p.turnPower+=v;const [t2,nd]=checkPower(S,p);p.turnPower-=v;if(t2>=nd){exigentUse(S,p,u,ch[0]);return true}continue}
+    const n2=kv(dd,"pump");for(const k of ch){C(S,k).tmp=(C(S,k).tmp||0)+n2;const [t2,nd]=checkPower(S,p);C(S,k).tmp-=n2;if(t2>=nd){exigentUse(S,p,u,k);return true}}}
+  // two cards if budget allows
+  if(S.cfg.exigent_multi)for(let i=0;i<cs.length;i++)for(let j=i+1;j<cs.length;j++){const a=cs[i],b=cs[j];if(exigentCost(S,a)+exigentCost(S,b)>p.infl)continue;
+    for(const k of ch){const v=kv(D(S,a),"pump")+kv(D(S,b),"pump");C(S,k).tmp=(C(S,k).tmp||0)+v;const [t2,nd]=checkPower(S,p);C(S,k).tmp-=v;if(t2>=nd){exigentUse(S,p,a,k);exigentUse(S,p,b,k);return true}}}
+  return false}
+function dnt(S,p,u){return has(D(S,u),"dauntless")||(D(S,u).guild==="Warrior"&&p&&p.champs.some(o=>has(D(S,o),"adamantine")))}
 function checkPower(S,p){
   const m=monster(S);const kd=p.ignoreMon?{}:mkd(S);
-  let contribs=p.champs.filter(u=>!(S.cfg.exhausted_no_battle&&C(S,u).turned)).map(u=>{let v=cpower(S,p,u,false,true);const dn=has(D(S,u),"dauntless");
+  let contribs=p.champs.filter(u=>!(S.cfg.exhausted_no_battle&&C(S,u).turned)).map(u=>{let v=cpower(S,p,u,false,true);const dn=dnt(S,p,u);
     if(!dn){
-      if("armor" in kd&&!p.champs.some(o=>has(D(S,o),"pierce_all")))v-=+kd.armor[0];
+      if("armor" in kd&&!p.champs.some(o=>has(D(S,o),"pierce_all")))v-=+kd.armor[0]+(("armor_if6" in kd&&p.champs.length>=6)?+kd.armor_if6[0]:0)+(("armor_np2" in kd&&p.champs.length>=S.n+2)?+kd.armor_np2[0]:0)+(("armor_ifc" in kd&&p.champs.length>=+kd.armor_ifc[0])?+kd.armor_ifc[1]:0);
       if("min_contrib" in kd&&v<=+kd.min_contrib[0])v=0;
       if("turned_zero" in kd&&C(S,u).turned)v=0;
     }return {v:Math.max(0,v),dn}});
   if("unique_power" in kd){const seen=new Set();contribs=contribs.filter(x=>{if(x.dn)return true;if(seen.has(x.v))return false;seen.add(x.v);return true})}
+  if("keep_strongest" in kd){const nd=contribs.filter(x=>!x.dn).sort((a,b)=>b.v-a.v);const keep=new Set(nd.slice(0,+kd.keep_strongest[0]));contribs=contribs.filter(x=>x.dn||keep.has(x))}
   if("strongest_minus" in kd){const nd=contribs.filter(x=>!x.dn&&x.v>0);if(nd.length){const mx=nd.reduce((a,b)=>b.v>a.v?b:a);mx.v=Math.max(0,mx.v-+kd.strongest_minus[0])}}
   if("ignore_strongest" in kd){const nd=contribs.filter(x=>!x.dn);if(nd.length){const mx=nd.reduce((a,b)=>b.v>a.v?b:a);contribs.splice(contribs.indexOf(mx),1)}}
   const total=contribs.reduce((s,x)=>s+x.v,0)+p.mcheck+(p.boost||0)+(S.checkBonus||0);
@@ -620,6 +648,8 @@ function checkPower(S,p){
   if("per_arm" in mk)need+=+mk.per_arm[0]*p.champs.reduce((s,u)=>s+C(S,u).arms.length,0);
   if("per_failed" in mk)need+=+mk.per_failed[0]*S.failedMonsters;
   if("per_player" in mk)need+=+mk.per_player[0]*S.n;
+  if("flat_3plus" in mk&&S.n>=3)need+=+mk.flat_3plus[0];
+  if("per_player_over2" in mk)need+=+mk.per_player_over2[0]*Math.max(0,S.n-2);
   if("per_trophy_minion" in mk)need+=+mk.per_trophy_minion[0]*p.trophy.filter(u=>ctype(S,u)==="Minion").length;
   if("plus_l1" in mk)need+=MONS[S.monsterPick[1]].power;
   {const lb=S.cfg["l"+S.monster+"_bonus_"+S.n+"p"];if(lb)need+=+lb;}
@@ -628,6 +658,7 @@ function checkPower(S,p){
 function reactions(S,i){
   // offer each other seat, in turn order, a chance to help the active player's check
   const a=P(S,S.turn);
+  if("no_rally" in mkd(S)&&S.rallyCry==null){S.rallyCry=false;if(!S.nrLog){S.nrLog=1}}
   if(S.cfg.rally&&S.cfg.rally_cry&&S.rallyCry==null&&S.n>1){const [t0,n0]=checkPower(S,a);
     if(t0<n0&&S.players.some(q=>q!==a&&q.champs.some(u=>!C(S,u).turned||has(D(S,u),"aegis_hand")||has(D(S,u),"aegis_half")))){ask(S,a.idx,"rallycry",`You have ${t0} Power against ${monster(S).name}'s ${n0}. Send a Rally cry?`,[{key:"yes",label:"Send a Rally cry"},{key:"pass",label:"No, battle alone"}],{i});return}
     S.rallyCry=false}
@@ -655,7 +686,7 @@ function reactions(S,i){
 function clearRally(S){S.rallyThisBattle=0;S.rallyCry=null;S.players.forEach(q=>{q.rallied=false;q.rallyDrew=false;q.rallyQueued=false;q.ralliedSet=[]})}
 function monsterStart(S,p){
   const kd=mkd(S);
-  const ok=u=>!has(D(S,u),"dauntless");
+  const ok=u=>!dnt(S,p,u);
   if("start_vanq_weak_le" in kd&&p.champs.length){const w=weakest(S,p,p.champs);if(cpower(S,p,w)<=+kd.start_vanq_weak_le[0]&&ok(w))vanquish(S,p,w)}
   if("start_vanq_all_le" in kd)p.champs.filter(u=>cpower(S,p,u)<=+kd.start_vanq_all_le[0]&&ok(u)).forEach(u=>vanquish(S,p,u));
   if("start_vanq_strong_le" in kd){const c=p.champs.filter(u=>cpower(S,p,u)<=+kd.start_vanq_strong_le[0]&&ok(u));if(c.length)vanquish(S,p,strongest(S,p,c))}
@@ -673,6 +704,7 @@ function monsterCheck(S){
     log(S,`Battles ${m.name}: ${total} vs ${need}. Success: Gains a Critical Hit.`,p.idx);
     (S.aegisDraw||[]).forEach(([qi,n])=>{draw(S,P(S,qi),n);S.rallyDraws=(S.rallyDraws||0)+1;log(S,`Draws ${n} for a successful Rally.`,qi)});
     (S.aegisHonor||[]).forEach(qi=>gainCommendation(S,P(S,qi),"Reward for helping"));
+    (S.supportKnight||[]).forEach(qi=>{const pile=S.supply.T9;if(pile&&pile.length){P(S,qi).trophy.push(pile.pop());log(S,`Support reward: gains a Knighthood into the Trophy pile.`,qi)}});
     (S.supportLeader||[]).forEach(qi=>{const q=P(S,qi);log(S,`Support: gets the Level ${L} Guild Leader reward.`,qi);if(L===1)S.tasks.unshift({op:"banish",p:qi,n:1,where:["hand","discard"],opt:true});else if(L===2){if(S.supply.T5.length)q.discard.push(S.supply.T5.pop())}else q.bonusLead=(q.bonusLead||0)+3});
     if(p.selfComm){p.selfComm=false;gainCommendation(S,p,"Rift Lance or Cataclysm")}
     S.players.forEach(q=>{if(q===p)return;q.champs.forEach(u=>{if(has(D(S,u),"exalt")){const key=S.monster+":"+u;S.exalted=S.exalted||{};if(!S.exalted[key]){S.exalted[key]=1;gainCommendation(S,q,"Exalt")}}})});
@@ -692,7 +724,7 @@ function monsterCheck(S){
       if(!p.startDone)monsterStart(S,p);
       if("fail_vanq_weak" in kd)for(let i=0;i<+kd.fail_vanq_weak[0];i++)if(p.champs.length)vanquish(S,p,weakest(S,p,p.champs));
       if("knockout" in kd&&p.champs.length>=+kd.knockout[0])vanquish(S,p,strongest(S,p,p.champs));
-      if("post_vanq_turned_le" in kd)p.champs.filter(u=>C(S,u).turned&&cpower(S,p,u)<=+kd.post_vanq_turned_le[0]&&!has(D(S,u),"dauntless")).forEach(u=>vanquish(S,p,u));
+      if("post_vanq_turned_le" in kd)p.champs.filter(u=>C(S,u).turned&&cpower(S,p,u)<=+kd.post_vanq_turned_le[0]&&!dnt(S,p,u)).forEach(u=>vanquish(S,p,u));
       if("post_vanq_turned_weak" in kd){const t=p.champs.filter(u=>C(S,u).turned);if(t.length)vanquish(S,p,weakest(S,p,t))}
       if("post_vanq_strong_le" in kd&&p.champs.length){const c=strongest(S,p,p.champs);if(cpower(S,p,c)<=+kd.post_vanq_strong_le[0])vanquish(S,p,c)}
       if("post_vanq_turned_strong" in kd){const t=p.champs.filter(u=>C(S,u).turned);if(t.length)vanquish(S,p,strongest(S,p,t));else if("post_vanq_strong_le_if_none" in kd&&p.champs.length){const c=strongest(S,p,p.champs);if(cpower(S,p,c)<=+kd.post_vanq_strong_le_if_none[0])vanquish(S,p,c)}}
@@ -703,7 +735,7 @@ function monsterCheck(S){
     }
   }
   if(S.cfg.monster_battle_exhausts)p.champs.forEach(u=>C(S,u).turned=true);
-  S.checkBonus=0;p.boost=0;S.aegisDraw=[];S.aegisHonor=[];S.supportLeader=[];clearRally(S);
+  S.checkBonus=0;p.boost=0;S.aegisDraw=[];S.aegisHonor=[];S.supportLeader=[];S.supportKnight=[];clearRally(S);
   S.battleDone.push(p.idx);S.battleQueue.shift();p.startDone=false;
   if(!S.battleQueue.length)resolveMonster(S);
 }
@@ -712,7 +744,7 @@ function resolveMonster(S){
   S.monsterResults[L]={name:m.name,defeated:allw,wounds:S.woundsThis.length};
   if(allw){
     const rid=S.cfg["group_reward_l"+L];
-    if(S.cfg.shared_comm&&S.n>1){log(S,`${m.name} is driven back! Everyone Acquires a Commendation.`);S.sharedRewards=(S.sharedRewards||0)+1;S.players.forEach(q=>gainCommendation(S,q,"Shared victory"));}
+    if(S.cfg.shared_comm&&S.n>1){log(S,`${m.name} is driven back! Everyone Acquires a Commendation.`);S.sharedRewards=(S.sharedRewards||0)+1;(S.cfg.shared_tide&&tideHolderIdx(S)>=0?S.players.map((_,j)=>S.players[(tideHolderIdx(S)+j)%S.n]):S.cfg.shared_rev?S.players.slice().reverse():S.cfg.shared_from_battler?S.players.map((_,j)=>S.players[(S.turn+1+j)%S.n]):S.players).forEach(q=>gainCommendation(S,q,"Shared victory"));}
     else log(S,`${m.name} is driven back! Everyone Acquires ${rid?DEFS[rid].name:"nothing"}.`);
     if(rid&&!(S.cfg.shared_comm&&S.n>1))S.players.forEach(p=>{if(S.supply[rid]&&S.supply[rid].length)p.discard.push(S.supply[rid].pop())});
   }else{S.failedMonsters++;log(S,`${m.name} survives with ${S.woundsThis.length} of ${S.n} Critical Hits and returns to the Rift.`)}
@@ -721,7 +753,7 @@ function resolveMonster(S){
 }
 // ---------- turn flow ----------
 function startTurn(S){
-  const p=P(S,S.turn);resetTurn(p);if(S.cfg.tide_holder_infl&&S.n>=3&&S.cfg["tide_mode_"+S.n+"p"]==="rotate"&&tideHolderIdx(S)===p.idx){p.infl+=S.cfg.tide_holder_infl;S.tideBonus=(S.tideBonus||0)+1}if(S.cfg.tide_holder_draw&&S.n>=3&&tideHolderIdx(S)===p.idx){draw(S,p,S.cfg.tide_holder_draw)}if(S.cfg.seat_first_inf&&S.round===1){const v=String(S.cfg.seat_first_inf).split(",").map(Number);p.infl+=v[p.idx]||0}if(S.cfg.ready_at_start){p.champs.forEach(u=>C(S,u).turned=false);p.items.forEach(u=>C(S,u).turned=false)}S.allPower=0;S.checkBonus=0;
+  const p=P(S,S.turn);resetTurn(p);if(S.cfg.tide_holder_infl&&S.n>=3&&S.cfg["tide_mode_"+S.n+"p"]==="rotate"&&tideHolderIdx(S)===p.idx){p.infl+=S.cfg.tide_holder_infl;S.tideBonus=(S.tideBonus||0)+1}if(S.cfg.tide_holder_draw&&S.n>=3&&tideHolderIdx(S)===p.idx){draw(S,p,S.cfg.tide_holder_draw)}if((S.cfg["seat_first_inf_"+S.n+"p"]||S.cfg.seat_first_inf)&&S.round===1){const v=String(S.cfg["seat_first_inf_"+S.n+"p"]||S.cfg.seat_first_inf).split(",").map(Number);p.infl+=v[p.idx]||0}if(S.cfg.ready_at_start){p.champs.forEach(u=>C(S,u).turned=false);p.items.forEach(u=>C(S,u).turned=false)}S.allPower=0;S.checkBonus=0;
   if(S.monster&&S.battleQueue==null){S.battleQueue=[];for(let i=0;i<S.n;i++)S.battleQueue.push((S.turn+i)%S.n);S.battleDone=[]}
   if(!S.monster&&S.levelNext<=3&&!S.arenaDeck.length&&!((S.cfg.portal_cooldown||S.cfg.portal_cool_same)&&S.portalCool!=null&&S.round<=S.portalCool)){openMonster(S);S.battleQueue=[];for(let i=0;i<S.n;i++)S.battleQueue.push((S.turn+i)%S.n)}
   log(S,`Round ${S.round}: ${p.name}'s turn${isBattleTurn(S,p.idx)?" (battle turn vs "+monster(S).name+")":""}.`,p.idx);
@@ -874,6 +906,7 @@ function botChoose(S){
     case "windfall":return pick(o[0].key);
     case "sacItem":return pick(o.reduce((a,b)=>D(S,b.u).cost<D(S,a.u).cost?b:a).key);
     case "returnItem":return pick(o.reduce((a,b)=>D(S,b.u).cost<D(S,a.u).cost?b:a).key);
+    case "exigentPick":return pick("pass");
     case "freeItem":{const l=o.filter(x=>x.u);return pick(l.length?l.reduce((a,b)=>D(S,b.u).cost>D(S,a.u).cost?b:a).key:"pass")}
     case "vanqChoice":case "sacrifice":{const l=o;return pick(l.reduce((a,b)=>cpower(S,p,b.u)<cpower(S,p,a.u)?b:a).key)}
     case "pump":{const un=o.filter(x=>!C(S,x.u).turned);const l=un.length?un:o;return pick(l.reduce((a,b)=>cpower(S,p,b.u)>cpower(S,p,a.u)?b:a).key)}
@@ -958,7 +991,7 @@ function botAction(S){
   if(battle&&!p.battled)return {t:"faceMonster"};
   return {t:"endTurn"};
 }
-root.HOE={minionPower,fightable,tideHolder:S=>{const m=S.cfg["tide_mode_"+S.n+"p"];return m==="turn"?S.turn:m==="rotate"?tideHolderIdx(S):-1},itemsCount,loadData,newGame,apply,botAction,actorSeat,cpower,cost,acquirable,canPlay,checkPower,isBattleTurn,monster,score,ctype,minionNeed,hasCrown,
+root.HOE={exigentOk,exigentCost,exigentCards,minionPower,fightable,tideHolder:S=>{const m=S.cfg["tide_mode_"+S.n+"p"];return m==="turn"?S.turn:m==="rotate"?tideHolderIdx(S):-1},itemsCount,loadData,newGame,apply,botAction,actorSeat,cpower,cost,acquirable,canPlay,checkPower,isBattleTurn,monster,score,ctype,minionNeed,hasCrown,
   defs:()=>DEFS,mons:()=>MONS,cfg:()=>CFG};
 })(typeof window!=="undefined"?window:globalThis);
 </script>
@@ -1176,8 +1209,8 @@ function sheetHTML(){
       if(where==="items"&&owner===tp&&d.type==="Armament"&&s.cfg.arm_equip)b+=`<button class="btn primary" data-a="equipitem" data-u="${u}" ${(tp.equippedThisTurn||[]).includes(u)||!tp.champs.length?"disabled":""}>Equip to a Champion</button>`;
       if(where==="items"&&owner===tp&&d.type==="Armament"&&HOE.cfg().equip_action&&tp.champs.length)b+=`<button class="btn primary" data-a="equiparm" data-u="${u}" ${c.eqTurn===s.turnCount?"disabled":""}>${c.eqTurn===s.turnCount?"Equipped this turn":"Equip"}</button>`;
       if((where==="items"||where==="champs")&&owner===tp&&d.keys.some(k=>k[0]==="util"))b+=`<button class="btn primary" data-a="util" data-u="${u}" ${c.turned?"disabled":""}>${c.turned?"Already used":"Utilize"}</button>`;
-      if((where==="arena"||where==="deck"||where==="other")&&o)b+=`<button class="btn primary" data-a="buy" data-u="${u}" ${o.ok?"":"disabled"}>${d.type==="Champion"?"Enlist":"Acquire"} for ${o.cost}</button>${o.ok?"":`<span class="muted" style="align-self:center">${D2(u).type==="Ascendancy"&&tp.wounds.length<2?"Needs 2 Critical Hits":"Not enough Influence"}</span>`}`;
-      if((where==="arena"||where==="town")&&t==="Minion")b+=`<button class="btn rift" data-a="fightopen" data-u="${u}">Fight this Minion (needs ${HOE.minionNeed(s,tp,u)})</button>`;
+      if((where==="arena"||where==="deck"||where==="other")&&o)b+=`<button class="btn primary" data-a="buy" data-u="${u}" ${o.ok?"":"disabled"}>${d.type==="Champion"?"Enlist":"Acquire"} for ${o.cost}</button>${o.ok?"":`<span class="muted" style="align-self:center">${D2(u).type==="Ascendancy"&&tp.wounds.length<2?"Needs 2 Critical Hits":(s.monster&&HOE.exigentCards(s).includes(u)?"Exigent: can't be Acquired while a Monster is in play":"Not enough Influence")}</span>`}`;
+      if(where==="arena"&&HOE.exigentOk(s,tp,u))b+=`<button class="btn rift" data-a="exigent" data-u="${u}">Exigent: pay ${HOE.exigentCost(s,u)} and use it now</button>`;if((where==="arena"||where==="town")&&t==="Minion")b+=`<button class="btn rift" data-a="fightopen" data-u="${u}">Fight this Minion (needs ${HOE.minionNeed(s,tp,u)})</button>`;
     }
     b+=`<button class="btn" data-a="closesheet">Close</button></div>`;
   }else if(sh.k==="fight"){
@@ -1218,8 +1251,8 @@ function rulesHTML(){
   sec("End of your turn",["Refill empty Arena slots now, not when a card is taken.","Discard your hand and played cards, then draw 5. Exhausted cards Ready at the start of your next turn."])+
   sec("Champions",["Stay in play until Sacrificed. When a Champion is Sacrificed or goes to the discard pile from play, its Armaments stay in play, unequipped, ready to Equip again.","<b>Exhausted Champions can't Fight or Battle.</b> Fighting and Battling Exhausts them."])+
   sec("Minions",["Defeated Minions go to your Trophy pile and score their Prestige. <b>Spoils</b> is the reward for Defeating one.","<b>Impact</b> effects trigger when a Minion or Monster enters the Arena, and hit every player.","Arena Minions get +1 Power for each Monster that has left play.","Mutant Rats wait in the Town Center. Each Rat in your Trophy pile makes your next Rat +2 Power tougher. Hunter and Lethality don't work on them."])+
-  sec("Monsters",["Portal cards bring Monsters out: Level 1, then 2, then 3.","<b>Portal Cooldown</b> (2 to 5 players): after a Monster leaves, Portals do nothing until the end of the next full round.","Everyone Battles each Monster once, on their own turn, whenever they choose.","Add up your ready Champions' Power plus bonuses.","<b>Start of Battle:</b> the Monster's start-of-Battle abilities hit you first, Sacrifices included. Then add up your Power.","<b>Win:</b> Gain a Critical Hit.","<b>Lose:</b> Gain an Infamy, and its 'if you fail' abilities hit you.","If every player wins, everyone Acquires a Commendation (solo: Esteem or Renown)."])+
-  sec("Rally cry and Support",["If you can't beat the Monster's Power, you may send a Rally cry.","Each other player may Exhaust one ready Champion to add its Power. If your Battle succeeds, each of them draws cards equal to the Monster's Level.","<b>Support:</b> during a Rally cry, other players may also play an Action with Support to add its Power and get its Support bonus. Support doesn't count as Rallying.","Aegis (Paladins): you may answer a Rally cry with this Champion while it's Exhausted. If you do, its Power is halved, rounded up.","If every player lands a Critical Hit, everyone Acquires a Commendation."])+
+  sec("Monsters",["Portal cards bring Monsters out: Level 1, then 2, then 3.","<b>Portal Cooldown</b> (2 to 5 players): after a Monster leaves, Portals do nothing until the end of the next full round.","Everyone Battles each Monster once, on their own turn, whenever they choose.","Add up your ready Champions' Power plus bonuses.","<b>Start of Battle:</b> the Monster's start-of-Battle abilities hit you first, Sacrifices included. Then add up your Power.","<b>Win:</b> Gain a Critical Hit.","<b>Lose:</b> Gain an Infamy, and its 'if you fail' abilities hit you.","If every player wins, everyone Acquires a Commendation, starting with the last player in turn order and going in reverse (solo: Esteem or Renown)."])+
+  sec("Rally cry and Support",["If you can't beat the Monster's Power, you may send a Rally cry.","Each other player may Exhaust one ready Champion to add its Power. If your Battle succeeds, each of them draws cards equal to the Monster's Level.","<b>Support:</b> during a Rally cry, other players may also play an Action with Support to add its Power and get its Support bonus. Support doesn't count as Rallying.","<b>Exigent:</b> while a Monster is in play, Exigent cards in the Arena can't be Acquired. Instead, on your turn you may pay a card's cost and use it right from the Arena. It stays there. Once per turn. Tap the card to use it, or the game offers it when you come up short in a Battle.","Aegis (Paladins): you may answer a Rally cry with this Champion while it's Exhausted. If you do, its Power is halved, rounded up.","If every player lands a Critical Hit, everyone Acquires a Commendation, last player first."])+
   sec("Guild Leaders",["Once per game, Enlist one of your guild's Champions for 1 less Influence.","Critical Hit rewards: Level I, Banish a card from your hand or discard pile. Level II, your guild's own reward (see your Leader). Level III, +3 Prestige at game end."])+
   sec("Rift Tide",["2 players: after every turn, Replace the bottom leftmost Arena card; the card passes left each turn.","3 to 5 players: the last player starts with the Rift Tide. The holder gets +1 Influence on their turn, then Replaces the bottom leftmost Arena card at the end of it. Pass it to the right each round."])+
   sec("Game end",["The Level 3 Monster Battle finishes, or someone Ascends by Acquiring "+esc(par?par.name:"Paragon of the Accord")+(par?` (cost ${par.cost}, needs ${(par.kd.snitch||[2])[0]} Critical Hits)`:"")+".","Finish the round so everyone gets the same number of turns."])+
@@ -1247,7 +1280,7 @@ document.addEventListener("click",e=>{
     case "util":act({t:"utilize",u});break;
     case "equiparm":act({t:"equipArm",u});break;
     case "equipitem":act({t:"equipItem",u});break;
-    case "buy":act({t:"acquire",u});break;
+    case "buy":act({t:"acquire",u});break;case "exigent":act({t:"exigent",u});break;
     case "fightopen":U.fight=[];U.sheet={k:"fight",u};render();break;
     case "fsel":{const f=U.fight;const k=f.indexOf(u);k<0?f.push(u):f.splice(k,1);render();break}
     case "fightgo":act({t:"fight",m:U.sheet.u,team:U.fight.slice()});break;
