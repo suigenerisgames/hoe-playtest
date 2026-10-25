@@ -1,5 +1,5 @@
 {
-"version": "v0.24a",
+"version": "v0.26",
 "cards": {
 "ST1": {
 "h": "2fd932d87827",
@@ -54,19 +54,19 @@
 "keys": "first_cost:Armament:1"
 },
 "P2": {
-"h": "8ee08fdca22e",
-"keys": "aegis_half"
+"h": "5e7608a9bc95",
+"keys": "militia_arm:1"
 },
 "P3": {
 "h": "4d98748a5a88",
 "keys": "arm_to_hand"
 },
 "P4": {
-"h": "4a603ae36fed",
+"h": "7bd28eb699a4",
 "keys": "sacrosanct:2;opp_wound_power:1"
 },
 "P5": {
-"h": "d8bb17535664",
+"h": "ec4a7e34f6ec",
 "keys": "divine_hand:3;opp_wound_prestige:1"
 },
 "P6": {
@@ -74,7 +74,7 @@
 "keys": "vigil"
 },
 "P7": {
-"h": "7a65cd2a8897",
+"h": "e16d978d26cc",
 "keys": "sacrosanct:2;aegis_half"
 },
 "P8": {
@@ -98,8 +98,8 @@
 "keys": "epiphany:1"
 },
 "A5": {
-"h": "75e87ead7c95",
-"keys": "galvanize"
+"h": "43395ff3410a",
+"keys": "galvanize;token_pow:1"
 },
 "A6": {
 "h": "80bbe02c8d5b",
@@ -142,16 +142,16 @@
 "keys": "lethality:3;pierce_all"
 },
 "S8": {
-"h": "d4a39b8732d6",
-"keys": "lethality:3;alacrity_first_inf"
+"h": "80f47f27e4e3",
+"keys": "lethality:3;alacrity"
 },
 "N1": {
 "h": "fdfba9acc94a",
 "keys": "acq_banish:1"
 },
 "N2": {
-"h": "1eccd38c1ce0",
-"keys": "raise_dead_first"
+"h": "767316b3f21a",
+"keys": "raise_dead_own"
 },
 "N3": {
 "h": "81af5655a8b1",
@@ -162,8 +162,8 @@
 "keys": "blood_magic"
 },
 "N5": {
-"h": "d8e60fbafa33",
-"keys": "acq_banish:2;raise_dead_first"
+"h": "967478ae460d",
+"keys": "acq_banish:2;raise_dead_own"
 },
 "N6": {
 "h": "f1cac56197ca",
@@ -250,8 +250,8 @@
 "keys": "arm:2;arm_protect"
 },
 "R7": {
-"h": "3d659d4015cd",
-"keys": "arm:2;arm_indomitable"
+"h": "a0b0acf68984",
+"keys": "arm:1;arm_drawplus;arm_clutch"
 },
 "R8": {
 "h": "4dd2186ffd88",
@@ -422,7 +422,7 @@
 "keys": "power_eq_items"
 },
 "Z7": {
-"h": "4b6c636f8b19",
+"h": "d1ff05e2a1c3",
 "keys": ""
 },
 "Z8": {
@@ -508,7 +508,7 @@
 "keys": "start_vanq_strong_le:6;fail_infamy:2;reveal_vanq_weak"
 },
 "Djinn of the Infinite": {
-"h": "5c756b166998",
+"h": "41d943ecc4ba",
 "keys": "djinn_trophy"
 },
 "Forlox, the Conjurer": {
