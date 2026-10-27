@@ -1,5 +1,5 @@
 {
-"version": "v0.26",
+"version": "v0.27",
 "cards": {
 "ST1": {
 "h": "2fd932d87827",
@@ -106,8 +106,8 @@
 "keys": "expedite"
 },
 "A7": {
-"h": "9a90811ea9cc",
-"keys": "hungry"
+"h": "df2d11898528",
+"keys": "hungry:7"
 },
 "A8": {
 "h": "0a17cce2f6f4",
@@ -258,8 +258,8 @@
 "keys": "arm:8"
 },
 "C1": {
-"h": "51477fadcb3e",
-"keys": "inf:1;pump:2;draw_if_minion;exigent"
+"h": "f50558e77160",
+"keys": "inf:1;pump:2;eot_draw_if_minion;exigent"
 },
 "C3": {
 "h": "7814df098774",
