@@ -397,7 +397,7 @@ function playCard(S,p,u){
   if(t==="Armament"){C(S,u).eqTurn=S.turnCount;S.tasks.push({op:"equip",p:p.idx,u});return}
   if(t.startsWith("Action")){
     if(S.cfg.magic_single_use&&t==="Action - Magic"){log(S,`Plays ${d.name} (Magic, Banished after use).`,p.idx)}else p.played.push(u);
-    if(t!=="Action - Basic")log(S,`[actionplay] ${d.type}`,p.idx);
+    
     if(!(S.cfg.magic_single_use&&t==="Action - Magic"))log(S,`Plays ${d.name}.`,p.idx);
     S.tasks.push(...effects(p.idx,d.keys,false));
     if(!p.firstActionDraw&&p.champs.some(o=>has(D(S,o),"first_action_draw")||has(D(S,o),"first_action_loot"))){p.firstActionDraw=true;S.tasks.push({op:"draw",p:p.idx,n:1});if(p.champs.some(o=>has(D(S,o),"first_action_loot")))S.tasks.push({op:"discard",p:p.idx,n:1,why:"Shadow Work"})}
