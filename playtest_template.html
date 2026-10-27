@@ -173,7 +173,7 @@ function newGame(opts){
   const defs=Object.values(DEFS);
   for(let i=0;i<S.n;i++){
     const s=opts.seats[i];
-    const p={idx:i,name:s.name,guild:s.guild,ctrl:s.ctrl,strat:s.strat||"Loyal",deck:[],hand:[],discard:[],champs:[],items:[],trophy:[],wounds:[],played:[],
+    const p={idx:i,name:s.name,guild:(S.n===1&&s.ctrl==="human"&&!S.cfg.solo_fixed_guild)?null:s.guild,ctrl:s.ctrl,strat:s.strat||"Loyal",deck:[],hand:[],discard:[],champs:[],items:[],trophy:[],wounds:[],played:[],
       infl:0,leaderSpent:false,stats:{}};
     defs.forEach(d=>{if(d.area==="Starter")for(let k=0;k<d.qty;k++)p.deck.push(newCard(S,d.id))});
     S.players.push(p);
@@ -432,7 +432,7 @@ function defeatMinion(S,p,m,team){
 }
 function acquire(S,p,u,from){
   const d=D(S,u),t=d.type,tt=t.startsWith("Action")?"Action":t;
-  if(!S.cfg.no_leader&&t==="Champion"&&(d.guild===p.guild||(S.n===1&&d.guild&&d.guild!=="Militia"))&&!p.leaderSpent){p.leaderSpent=true;log(S,S.n===1?`Uses the Guild Identity discount.`:`Uses the Guild Leader discount.`,p.idx)}
+  if(!S.cfg.no_leader&&t==="Champion"&&(d.guild===p.guild||(S.n===1&&d.guild&&d.guild!=="Militia"))&&!p.leaderSpent){p.leaderSpent=true;log(S,S.n===1?`Uses the Guild Identity discount.`:`Uses the Guild Leader discount.`,p.idx);if(S.n===1&&!p.guild){p.guild=d.guild;log(S,`Guild Identity: now ${/^[AEIOU]/.test(d.guild)?"an":"a"} ${d.guild}.`,p.idx)}}
   p.firstUsed[tt]=true;if(p.nextcost[tt])p.nextcost[tt]=0;if(d.isItem&&t==="Armament"){p.firstUsed.Item=true;if(p.nextcost.Item)p.nextcost.Item=0}
   if(from==="arena"){S.arena.splice(S.arena.indexOf(u),1);S.roundArenaAcq++}
   else if(from==="deck"){S.arenaDeck.pop();S.roundArenaAcq++}
@@ -1073,7 +1073,7 @@ function renderSetup(){
   h+=`<div class="sec">`;
   for(let i=0;i<st.n;i++){const s=st.seats[i];
     h+=`<div class="seat"><input aria-label="Seat ${i+1} name" value="${esc(s.name)}" data-a="name" data-i="${i}">
-      <select aria-label="Seat ${i+1} guild" data-a="guild" data-i="${i}">${["Random"].concat(GUILDS).map(g=>`<option ${s.guild===g?"selected":""}>${g}</option>`).join("")}</select>
+      ${st.n===1&&s.ctrl==="human"?`<span class="muted" style="align-self:center">Guild: set by your first Guild Identity discount</span>`:`<select aria-label="Seat ${i+1} guild" data-a="guild" data-i="${i}">${["Random"].concat(GUILDS).map(g=>`<option ${s.guild===g?"selected":""}>${g}</option>`).join("")}</select>`}
       <select aria-label="Seat ${i+1} control" data-a="ctrl" data-i="${i}"><option value="human" ${s.ctrl==="human"?"selected":""}>Person</option><option value="bot" ${s.ctrl==="bot"?"selected":""}>Bot</option></select></div>`}
   h+=`</div><div class="field"><label for="seed">Seed</label><input id="seed" inputmode="numeric" placeholder="Random" value="${esc(st.seed)}" data-a="seed" style="max-width:160px"><span class="muted" style="font-size:14px">Same seed, same shuffle</span></div>
   <div class="field"><label>Bot speed</label><div class="seg">${Object.keys(SPEEDS).map(k=>`<button class="${U.speed===k?"on":""}" data-a="speed" data-v="${k}">${k}</button>`).join("")}</div></div>
@@ -1178,9 +1178,9 @@ function render(){
   h+=`<div class="sec"><h2>Players <small>Prestige so far</small></h2>`;
   s.players.forEach((p,i)=>{if(i===U.view)return;
     const pw=p.champs.reduce((t,u)=>t+HOE.cpower(s,p,u),0);
-    h+=`<details class="opp ${i===s.turn?"active":""}" data-i="${i}"><summary><span class="dot" style="--gc:${GC[p.guild]}"></span><span class="nm">${esc(p.name)} <span class="tag ${p.ctrl==="bot"?"bot":""}">${p.ctrl==="bot"?"Bot":"Person"}</span></span>
+    h+=`<details class="opp ${i===s.turn?"active":""}" data-i="${i}"><summary><span class="dot" style="--gc:${GC[p.guild]||"#8a7a5a"}"></span><span class="nm">${esc(p.name)} <span class="tag ${p.ctrl==="bot"?"bot":""}">${p.ctrl==="bot"?"Bot":"Person"}</span></span>
       <span class="meta">♥${pw} ★${scores[i].total} ${"✚".repeat(p.wounds.length)}</span></summary><div class="body">
-      <div class="muted" style="font-size:14px">${p.guild}. Hand ${p.hand.length}, deck ${p.deck.length}, discard ${p.discard.length}, Critical Hits ${p.wounds.length}.</div>
+      <div class="muted" style="font-size:14px">${p.guild||"Choosing Guild"}. Hand ${p.hand.length}, deck ${p.deck.length}, discard ${p.discard.length}, Critical Hits ${p.wounds.length}.</div>
       ${p.champs.length?`<div class="row" style="margin-top:6px">${p.champs.map(u=>cardHTML(u,{p,inplay:true,small:true})).join("")}</div>`:""}
       ${p.items.length?`<div class="row">${p.items.map(u=>cardHTML(u,{p,inplay:true,small:true})).join("")}</div>`:""}
       ${U.peek||p.ctrl==="human"&&humans()===1?`<div class="muted" style="font-size:14px">Hand</div><div class="row">${p.hand.map(u=>cardHTML(u,{small:true})).join("")||'<span class="muted">Empty</span>'}</div>`:""}
@@ -1201,7 +1201,7 @@ function render(){
   // viewed seat
   const vs=scores[U.view];const hideHand=passNeeded||(vp.ctrl==="bot"&&!U.peek)||(humans()>1&&isHuman(U.view)&&U.view!==a&&!s.over);
   const vpw=vp.champs.reduce((t,u)=>t+HOE.cpower(s,vp,u),0);
-  h+=`<div class="you"><div class="hd"><span class="dot" style="--gc:${GC[vp.guild]};width:16px;height:16px"></span><h2 class="cz">${esc(vp.name)}</h2><span class="muted">${vp.guild}${vp.leaderSpent?"":", Leader discount ready"}</span></div>
+  h+=`<div class="you"><div class="hd"><span class="dot" style="--gc:${GC[vp.guild]||"#8a7a5a"};width:16px;height:16px"></span><h2 class="cz">${esc(vp.name)}</h2><span class="muted">${vp.guild||"Choosing Guild"}${vp.leaderSpent?"":(s.n===1?", Guild Identity ready":", Leader discount ready")}</span></div>
     <div class="stat"><div><b>${vp.infl}</b>Influence</div><div><b>${vpw}</b>Power</div><div><b>${vs.total}</b>Prestige</div><div><b>${vp.wounds.length}</b>Critical Hits</div></div>
     <div class="muted" style="font-size:14px">Deck ${vp.deck.length}, discard ${vp.discard.length}${vp.trophy.length?`, Trophies ${vp.trophy.length}`:""}. <button class="btn small" data-a="discard" style="min-height:30px;padding:0 8px">See discard</button></div>`;
   h+=`<div class="sec"><h2>Champions <small>${vp.champs.length}</small></h2><div class="row">${vp.champs.map(u=>cardHTML(u,{p:vp,inplay:true})).join("")||'<span class="muted">None in play</span>'}</div></div>`;
@@ -1275,7 +1275,7 @@ function sheetHTML(){
   }else if(sh.k==="discard"){
     const p=s.players[U.view];b=`<h3 class="cz">${esc(p.name)}: discard pile</h3><div class="grid">${p.discard.map(u=>cardHTML(u,{small:true})).join("")||'<span class="muted">Empty</span>'}</div>${p.trophy.length?`<h3 class="cz" style="margin-top:12px">Trophies</h3><div class="grid">${p.trophy.map(u=>cardHTML(u,{small:true})).join("")}</div>`:""}<div class="acts"><button class="btn" data-a="closesheet">Close</button></div>`;
   }else if(sh.k==="menu"){
-    b=`<h3 class="cz">Table</h3><div class="opts">${s.players.map((p,i)=>`<div class="opt"><span class="dot" style="--gc:${GC[p.guild]}"></span><span class="l">${esc(p.name)}<br><span class="muted" style="font-size:14px">${p.guild}</span></span><div class="seg"><button class="${p.ctrl==="human"?"on":""}" data-a="setctrl" data-i="${i}" data-v="human">Person</button><button class="${p.ctrl==="bot"?"on":""}" data-a="setctrl" data-i="${i}" data-v="bot">Bot</button></div></div>`).join("")}</div>
+    b=`<h3 class="cz">Table</h3><div class="opts">${s.players.map((p,i)=>`<div class="opt"><span class="dot" style="--gc:${GC[p.guild]||"#8a7a5a"}"></span><span class="l">${esc(p.name)}<br><span class="muted" style="font-size:14px">${p.guild||"Choosing Guild"}</span></span><div class="seg"><button class="${p.ctrl==="human"?"on":""}" data-a="setctrl" data-i="${i}" data-v="human">Person</button><button class="${p.ctrl==="bot"?"on":""}" data-a="setctrl" data-i="${i}" data-v="bot">Bot</button></div></div>`).join("")}</div>
       <div class="field"><label>Bot speed</label><div class="seg">${Object.keys(SPEEDS).map(k=>`<button class="${U.speed===k?"on":""}" data-a="speed" data-v="${k}">${k}</button>`).join("")}</div></div>
       <div class="field"><label>Hands</label><div class="seg"><button class="${U.peek?"":"on"}" data-a="peek" data-v="0">Hidden</button><button class="${U.peek?"on":""}" data-a="peek" data-v="1">Show bot hands</button></div></div>
       <p class="muted" style="font-size:14px">Seed ${s.seed}. Cards ${esc(s.v)}.</p>
@@ -1306,7 +1306,7 @@ function rulesHTML(){
   sec("Rift Tide",["2 players: after every turn, Replace the bottom leftmost Arena card; the card passes right each turn.","3 to 5 players: the last player starts with the Rift Tide. The holder gets +1 Influence on their turn, then Replaces the bottom leftmost Arena card at the end of it. Pass it to the right each round."])+
   sec("Game end",["The Level 3 Monster Battle finishes, or someone Ascends by Acquiring "+esc(par?par.name:"Paragon of the Accord")+(par?` (cost ${par.cost}, needs ${(par.kd.snitch||[2])[0]} Critical Hits)`:"")+".","Finish the round so everyone gets the same number of turns."])+
   sec("Scoring",["Prestige on your cards, including Trophy Minions.","Critical Hits are worth the number you own, squared: 1 = 1, 2 = 4, 3 = 9.","Guild Leader: +3 if you hit the Level 3 Monster.","Infamy: "+(cfg.infamy_prestige||-2)+" each."])+
-  sec("Solo",["Use the Guild Identity card instead of a Guild Leader: once per game, Enlist any guild's Champion for 1 less Influence.","Seed 20 cards (15 in Heroic mode). The Rift Tide fires after every turn.","Hit a Monster and it's driven back. There are no Rally cries in solo play, so Support abilities never trigger. Play those Actions for their main effect. Where a card mentions opponents or other players, follow its Solo note.","No loss: score Prestige. "+tiers+"."])+
+  sec("Solo",["Use the Guild Identity card instead of a Guild Leader: once per game, Enlist any guild's Champion for 1 less Influence. In the app, that Champion's guild becomes your guild.","Seed 20 cards (15 in Heroic mode). The Rift Tide fires after every turn.","Hit a Monster and it's driven back. There are no Rally cries in solo play, so Support abilities never trigger. Play those Actions for their main effect. Where a card mentions opponents or other players, follow its Solo note.","No loss: score Prestige. "+tiers+"."])+
   sec("Keywords",["<b>Acquire:</b> take a card from the Arena or Town Center. <b>Enlist:</b> Acquire a Champion or Militia. <b>Gain:</b> receive anything else (Critical Hits, Infamy).","<b>Fight:</b> take on a Minion. <b>Battle:</b> take on a Monster.","<b>Exhaust:</b> turn sideways. Readies at the start of your turn.","<b>Sacrifice:</b> put one of your cards in play into your discard pile. You choose, unless the card names a target.","<b>Banish:</b> remove from the game.","<b>Replace:</b> remove an Arena card from the game; the slot refills at the end of the turn."])+
   `<div class="acts"><button class="btn primary" data-a="closesheet">Got it</button></div>`;
 }
