@@ -1,5 +1,5 @@
 {
-"version": "v0.28",
+"version": "v0.29a",
 "cards": {
 "ST1": {
 "h": "2fd932d87827",
@@ -10,7 +10,7 @@
 "keys": ""
 },
 "ST3": {
-"h": "b5766a9b453d",
+"h": "913b679ce85c",
 "keys": "util:draw:1;util:discard:1;util:self_banish"
 },
 "ST4": {
@@ -34,7 +34,7 @@
 "keys": "dexterous"
 },
 "W5": {
-"h": "447639ad9454",
+"h": "8ece11ae967a",
 "keys": "camaraderie;dauntless"
 },
 "W6": {
@@ -170,7 +170,7 @@
 "keys": "resurrect:0"
 },
 "N7": {
-"h": "989cd855e0cb",
+"h": "9346d66f97c4",
 "keys": "play_sacrifice;undead_bonus:1"
 },
 "N8": {
@@ -246,7 +246,7 @@
 "keys": "arm_guild:1"
 },
 "R6": {
-"h": "a141d7a9c3ed",
+"h": "7b1c29629877",
 "keys": "arm:2;arm_protect"
 },
 "R7": {
@@ -274,8 +274,8 @@
 "keys": "inf:2;arena_replace"
 },
 "C7": {
-"h": "82d1ef998bba",
-"keys": "draw:2"
+"h": "5410368e8959",
+"keys": "draw:2;exigent"
 },
 "C8": {
 "h": "3fe11e49daee",
@@ -294,8 +294,8 @@
 "keys": "draw:1;refresh_items;power:1;exigent"
 },
 "C12": {
-"h": "7643dd539272",
-"keys": "draw:3"
+"h": "f47942e49cfe",
+"keys": "draw:3;exigent"
 },
 "M1": {
 "h": "a51737501268",
@@ -310,16 +310,16 @@
 "keys": "draw:1;banish_hand:1;inf:2"
 },
 "M6": {
-"h": "31e8d39ff87e",
-"keys": "tokens:2"
+"h": "0297b018bb96",
+"keys": "tokens:2;exigent"
 },
 "M7": {
 "h": "7a9e2b055e8b",
 "keys": "pump:6;draw:1;react_pump:6;react_comm;exigent"
 },
 "M8": {
-"h": "57b365331156",
-"keys": "pump:8;draw:1;react_pump:8;react_knight;exigent"
+"h": "fdb8dc07f128",
+"keys": "pump:10;draw:1;react_pump:10;react_knight;exigent"
 },
 "X1": {
 "h": "c6ff51b7efd5",
@@ -334,7 +334,7 @@
 "keys": ""
 },
 "X4": {
-"h": "567ca3ea4c71",
+"h": "3f0dcedea967",
 "keys": "reveal:vanq_le:2"
 },
 "X5": {
@@ -342,11 +342,11 @@
 "keys": ""
 },
 "X6": {
-"h": "b58dcaaa304e",
-"keys": "reveal:each_draw:1"
+"h": "39b8821f6b9f",
+"keys": "reveal:sacrifice_item;spoils_each_draw:1"
 },
 "X7": {
-"h": "855744486db9",
+"h": "5b71403e521e",
 "keys": "reveal:sacrifice_item"
 },
 "X8": {
@@ -354,7 +354,7 @@
 "keys": ""
 },
 "X9": {
-"h": "3888b9f598ef",
+"h": "1c6ae314b6a3",
 "keys": "reveal:most_sacrifice"
 },
 "X10": {
@@ -362,11 +362,11 @@
 "keys": ""
 },
 "X11": {
-"h": "00c79bc71009",
+"h": "5eb6a2451962",
 "keys": "reveal:discard:1"
 },
 "X12": {
-"h": "581802799810",
+"h": "9bc6a487857e",
 "keys": "reveal:vanq_choice_nonmilitia"
 },
 "T2": {
@@ -414,7 +414,7 @@
 "keys": ""
 },
 "Z5": {
-"h": "30b735d452a9",
+"h": "33149c7b36e6",
 "keys": ""
 },
 "Z6": {
@@ -456,7 +456,7 @@
 },
 "monsters": {
 "Dust Chimera": {
-"h": "4dfde28651ce",
+"h": "8b552cd42cd6",
 "keys": "start_vanq_strong_le:4"
 },
 "Hydra Basilisk": {
@@ -468,7 +468,7 @@
 "keys": "armor:1"
 },
 "Magmatic Ooze": {
-"h": "aa696528d1b1",
+"h": "9b3ef1dd1dce",
 "keys": "reveal_sac_le:3;min_contrib:2"
 },
 "The Dark Knight": {
@@ -476,19 +476,19 @@
 "keys": "per_trophy_minion:1"
 },
 "Adaptive Elemental": {
-"h": "8e817a47543a",
+"h": "f4ba402f9e50",
 "keys": "reveal_vanq_strong_le:5"
 },
 "Aspect of War": {
-"h": "c3cc72ea2308",
+"h": "6577ce0ae1c4",
 "keys": "per_arm:2;fail_vanq_strong:1"
 },
 "Priquella, Demon Witch": {
-"h": "61c3c21edd90",
+"h": "f5fd8a3bced7",
 "keys": "reveal_sac_le:3;strongest_minus:3"
 },
 "Quaz Ri, Archfiend": {
-"h": "3af1b9f0d6e3",
+"h": "a715cfeecd02",
 "keys": "start_vanq_choice_ge:3"
 },
 "Spectral Gravehound": {
@@ -496,11 +496,11 @@
 "keys": "min_contrib:3"
 },
 "Black Dragon of Nazryth": {
-"h": "788d4ecc1166",
+"h": "02445514d320",
 "keys": "armor:1;armor_ifc:10:1;reveal_vanq_weak"
 },
 "Chaotic Adjudicator": {
-"h": "1bfa0efd4f56",
+"h": "bc576711b826",
 "keys": "start_vanq_strong_le:6;fail_infamy:2;reveal_vanq_weak"
 },
 "Djinn of the Infinite": {
