@@ -1,5 +1,5 @@
 {
-"version": "v0.29a",
+"version": "v0.30",
 "cards": {
 "ST1": {
 "h": "2fd932d87827",
@@ -74,12 +74,12 @@
 "keys": "vigil"
 },
 "P7": {
-"h": "e16d978d26cc",
-"keys": "sacrosanct:2;aegis_half"
+"h": "8783abc1c86d",
+"keys": "sacrosanct:2;aegis_half;aegis_all"
 },
 "P8": {
-"h": "b27389752983",
-"keys": "blessed:2;divine_hand:3"
+"h": "33ede7151ae4",
+"keys": "blessed_eq:2;divine_hand:3"
 },
 "A1": {
 "h": "4abfeee30f91",
@@ -262,8 +262,8 @@
 "keys": "inf:1;pump:2;eot_draw_if_minion;exigent"
 },
 "C3": {
-"h": "7814df098774",
-"keys": "draw:2;discard:1"
+"h": "8ab3ab35062a",
+"keys": "draw:2;discard:1;exigent"
 },
 "C5": {
 "h": "2d5939c71fd4",

@@ -267,7 +267,8 @@ function makeToken(S,p,id){if(S.tokens[id]>0){S.tokens[id]--;const u=newCard(S,i
 function gainInfamy(S,p,n){for(let i=0;i<n;i++){
   if(p.champs.some(u=>has(D(S,u),"infamy_immune"))){p.banishedN=(p.banishedN||0)+1;log(S,`Infamy Banished instead (All Hallows Evie).`,p.idx);continue}
   if(S.infamyLeft>0){S.infamyLeft--;p.discard.push(newCard(S,"Z4"));log(S,`Gains an Infamy.`,p.idx)}}}
-function rallyVal(S,p,u){const v=cpower(S,p,u,false,true);return C(S,u).turned&&has(D(S,u),"aegis_half")?Math.ceil(v/2):v}
+function rallyVal(S,p,u){const v=cpower(S,p,u,false,true);return C(S,u).turned&&isAegis(S,u)?Math.ceil(v/2):v}
+function isAegis(S,u){if(has(D(S,u),"aegis_half"))return true;if(D(S,u).guild!=="Paladin")return false;const q=S.players.find(x=>x.champs.includes(u));return !!q&&q.champs.some(o=>has(D(S,o),"aegis_all"))}
 function cpower(S,p,u,vsMinion,battle){
   const c=C(S,u),d=DEFS[c.d];let b;
   if(c.res!=null)b=c.res;else if(has(d,"power_eq_items"))b=itemsCount(S,p);else b=d.power;
@@ -280,6 +281,7 @@ function cpower(S,p,u,vsMinion,battle){
     if(has(od,"rally"))b+=kv(od,"rally");
     if(has(od,"rally_guild")&&o!==u&&g==="Warrior")b+=kv(od,"rally_guild");
     if(has(od,"blessed")&&c.arms.length)b+=kv(od,"blessed");
+    if(has(od,"blessed_eq")&&C(S,o).arms.length&&g==="Paladin")b+=kv(od,"blessed_eq");
     if(has(od,"militia_arm")&&C(S,o).arms.length&&g==="Militia")b+=kv(od,"militia_arm");
     if(has(od,"token_pow")&&String(d.type).includes("Token"))b+=kv(od,"token_pow");
     C(S,o).arms.forEach(a=>{const ad=D(S,a);if(has(ad,"arm_guild")&&od.guild&&od.guild===g&&od.guild!=="Militia")b+=kv(ad,"arm_guild")});
@@ -295,6 +297,9 @@ function cpower(S,p,u,vsMinion,battle){
   if(has(d,"opp_wound_power"))b+=kv(d,"opp_wound_power")*Math.min(woundedOpps(S,p),S.cfg.opp_cap||99);
   if(d.id==="Z5")p.champs.forEach(o=>{if(has(D(S,o),"undead_bonus"))b+=kv(D(S,o),"undead_bonus")});
   if(has(d,"sacrosanct")&&c.arms.length)b+=kv(d,"sacrosanct");
+  if(has(d,"sacro_bare")&&!c.arms.length)b+=kv(d,"sacro_bare");
+  if(battle&&has(d,"stalwart"))b+=kv(d,"stalwart");
+  if(battle&&g==="Paladin"&&p&&p.guild==="Paladin"&&S.cfg.pal_leader_battle)b+=S.cfg.pal_leader_battle;
   c.arms.forEach(a=>{const ad=D(S,a);
     if(has(ad,"arm"))b+=kv(ad,"arm");
     if(has(ad,"arm_paladin")&&g==="Paladin")b+=kv(ad,"arm_paladin");
@@ -376,7 +381,7 @@ function apply(S,a){
     case "exigent":{if(!exigentOk(S,p,a.u))return false;exigentManual(S,p,a.u);break}
     case "faceMonster":{
       if(!isBattleTurn(S,p.idx)||p.battled)return false;
-      if(S.cfg.battle_team&&a.team){const okT=u=>p.champs.includes(u)&&(!C(S,u).turned||(S.cfg.aegis_battle&&has(D(S,u),"aegis_half")));if(!Array.isArray(a.team)||a.team.some(u=>!okT(u)))return false;p.battleTeam=a.team.slice();if(a.team.length)log(S,`Battles with ${a.team.map(u=>nm(S,u)).join(", ")}.`,p.idx)}else p.battleTeam=null;
+      if(S.cfg.battle_team&&a.team){const okT=u=>p.champs.includes(u)&&(!C(S,u).turned||(S.cfg.aegis_battle&&isAegis(S,u)));if(!Array.isArray(a.team)||a.team.some(u=>!okT(u)))return false;p.battleTeam=a.team.slice();if(a.team.length)log(S,`Battles with ${a.team.map(u=>nm(S,u)).join(", ")}.`,p.idx)}else p.battleTeam=null;
       p.battled=true;S.tasks.push({op:"bstart"},{op:"reactions",i:1},{op:"transmute"},{op:"exigent"},{op:"check"});break}
     case "endTurn":{
       if(isBattleTurn(S,p.idx)&&!p.battled){p.battled=true;S.tasks.push({op:"bstart"},{op:"reactions",i:1},{op:"transmute"},{op:"exigent"},{op:"check"})}
@@ -490,7 +495,7 @@ function exec(S,t){
       const c=p.champs.filter(u=>cpower(S,p,u)>=t.ge);if(!c.length)return;
       ask(S,p.idx,"vanqChoice",`${t.mn}: Destroy one of your Champions with Power ${t.ge} or more`,c.map(u=>({key:u,u})));return}
     case "windfall":{const sw=p.hand.filter(u=>D(S,u).id==="ST1");if(!sw.length||!S.supply.T5.length)return;
-      ask(S,p.idx,"windfall","Alchemical Windfall: Banish a Sway from your hand to gain an Esteem into your hand?",[{key:sw[0],u:sw[0],label:"Banish a Sway, gain an Esteem"},{key:"pass",label:"No"}]);return}
+      ask(S,p.idx,"windfall","Leverage: Banish a Sway from your hand to gain an Esteem into your hand?",[{key:sw[0],u:sw[0],label:"Banish a Sway, gain an Esteem"},{key:"pass",label:"No"}]);return}
     case "freeItem":{const c=S.arena.filter(u=>String(D(S,u).type).includes("Item")&&D(S,u).type!=="Champion Item"&&D(S,u).cost<=5);if(!c.length)return;ask(S,p.idx,"freeItem","Guild Leader reward: Acquire an Item costing 5 or less for no cost",c.map(u=>({key:u,u})).concat([{key:"pass",label:"No thanks"}]));return}
     case "sacLe":{const c=p.champs.filter(u=>cpower(S,p,u)<=t.le);if(!c.length)return;ask(S,p.idx,"vanqChoice",`${t.why}: Destroy one of your Champions with Power ${t.le} or less`,c.map(u=>({key:u,u})));return}
       case "sacAny":{if(!p.champs.length)return;ask(S,p.idx,"vanqChoice",`${t.why}: Destroy one of your Champions`,p.champs.map(u=>({key:u,u})));return}
@@ -639,7 +644,7 @@ function exigentTry(S,p){
 function dnt(S,p,u){return has(D(S,u),"dauntless")||(D(S,u).guild==="Warrior"&&p&&p.champs.some(o=>has(D(S,o),"adamantine")))}
 function checkPower(S,p){
   const m=monster(S);const kd=p.ignoreMon?{}:mkd(S);
-  let contribs=p.champs.filter(u=>!(p.battleTeam&&!p.battleTeam.includes(u))).filter(u=>!(S.cfg.exhausted_no_battle&&C(S,u).turned)||(((S.n===1&&S.cfg.solo_aegis)||S.cfg.aegis_battle)&&has(D(S,u),"aegis_half"))).map(u=>{let v=cpower(S,p,u,false,true);if(((S.n===1&&S.cfg.solo_aegis)||S.cfg.aegis_battle)&&C(S,u).turned&&has(D(S,u),"aegis_half"))v=Math.ceil(v/2);const dn=dnt(S,p,u);
+  let contribs=p.champs.filter(u=>!(p.battleTeam&&!p.battleTeam.includes(u))).filter(u=>!(S.cfg.exhausted_no_battle&&C(S,u).turned)||(((S.n===1&&S.cfg.solo_aegis)||S.cfg.aegis_battle)&&isAegis(S,u))).map(u=>{let v=cpower(S,p,u,false,true);if(((S.n===1&&S.cfg.solo_aegis)||S.cfg.aegis_battle)&&C(S,u).turned&&isAegis(S,u))v=Math.ceil(v/2);const dn=dnt(S,p,u);
     if(!dn){
       if("armor" in kd&&!p.champs.some(o=>has(D(S,o),"pierce_all")))v-=+kd.armor[0]+(("armor_if6" in kd&&p.champs.length>=6)?+kd.armor_if6[0]:0)+(("armor_np2" in kd&&p.champs.length>=S.n+2)?+kd.armor_np2[0]:0)+(("armor_ifc" in kd&&p.champs.length>=+kd.armor_ifc[0])?+kd.armor_ifc[1]:0);
       if("min_contrib" in kd&&v<=+kd.min_contrib[0])v=0;
@@ -669,7 +674,7 @@ function reactions(S,i){
   const a=P(S,S.turn);
   if("no_rally" in mkd(S)&&S.rallyCry==null){S.rallyCry=false;if(!S.nrLog){S.nrLog=1}}
   if(S.cfg.rally&&S.cfg.rally_cry&&S.rallyCry==null&&S.n>1){const [t0,n0]=checkPower(S,a);
-    if(t0<n0&&S.players.some(q=>q!==a&&q.champs.some(u=>!C(S,u).turned||has(D(S,u),"aegis_hand")||has(D(S,u),"aegis_half")))){ask(S,a.idx,"rallycry",`You have ${t0} Power against ${monster(S).name}'s ${n0}. Send a Rally cry?`,[{key:"yes",label:"Send a Rally cry"},{key:"pass",label:"No, battle alone"}],{i});return}
+    if(t0<n0&&S.players.some(q=>q!==a&&q.champs.some(u=>!C(S,u).turned||has(D(S,u),"aegis_hand")||isAegis(S,u)))){ask(S,a.idx,"rallycry",`You have ${t0} Power against ${monster(S).name}'s ${n0}. Send a Rally cry?`,[{key:"yes",label:"Send a Rally cry"},{key:"pass",label:"No, battle alone"}],{i});return}
     S.rallyCry=false}
   while(i<S.n){
     const q=P(S,(S.turn+i)%S.n);const opts=[];
@@ -679,7 +684,7 @@ function reactions(S,i){
     if(S.cfg.rally&&gateOk&&(!q.rallied||S.cfg.rally_multi)){const aeg=q.champs.some(x=>has(D(S,x),"rally_ready"));
       q.champs.forEach(u=>{if(q.ralliedSet&&q.ralliedSet.includes(u))return;const ex=C(S,u).turned;
         if(!ex)opts.push({key:"y"+u,kind:"rally",u,label:`Rally: exhaust ${nm(S,u)} (+${cpower(S,q,u,false,true)})${aeg?", Aegis readies it after":""}`});
-        else if(has(D(S,u),"aegis_hand"))opts.push({key:"y"+u,kind:"rally",u,label:`Aegis Rally: ${nm(S,u)} (+${cpower(S,q,u,false,true)}), then it returns to your hand`});else if(has(D(S,u),"aegis_half"))opts.push({key:"y"+u,kind:"rally",u,label:`Aegis Rally while Exhausted: ${nm(S,u)} (+${rallyVal(S,q,u)}, half Power)`})})}
+        else if(has(D(S,u),"aegis_hand"))opts.push({key:"y"+u,kind:"rally",u,label:`Aegis Rally: ${nm(S,u)} (+${cpower(S,q,u,false,true)}), then it returns to your hand`});else if(isAegis(S,u))opts.push({key:"y"+u,kind:"rally",u,label:`Aegis Rally while Exhausted: ${nm(S,u)} (+${rallyVal(S,q,u)}, half Power)`})})}
     if(cryOk)q.hand.forEach(u=>{if(has(D(S,u),"react_pump"))opts.push({key:"r"+u,kind:"rp",u,label:`Support: play ${nm(S,u)} on ${a.name}'s Battle (+${kv(D(S,u),"react_pump")})`})});
     q.hand.forEach(u=>{if(has(D(S,u),"reaction"))opts.push({key:"c"+u,kind:"cta",u,label:`Play ${nm(S,u)} (all Champions +1)`})});
     if("wish" in monster(S).kd&&!a.ignoreMon&&!q.wished)q.champs.forEach(u=>opts.push({key:"w"+u,kind:"wish",u,label:`Wish: Destroy ${nm(S,u)} (+${cpower(S,q,u)})`}));
@@ -777,6 +782,7 @@ function endTurn(S){
   if(p.champs.some(u=>has(D(S,u),"vigil"))&&p.champs.some(u=>C(S,u).arms.length))extra++;
   if(p.champs.some(u=>has(D(S,u),"hungry")&&cpower(S,p,u)>=(kv(D(S,u),"hungry")||10)))extra++;if(p.eotMinionDraw){if(p.minionCount>0)extra+=p.eotMinionDraw;p.eotMinionDraw=0}
   (S.turnLog=S.turnLog||[]).push({r:S.round,seat:p.idx,left:p.infl});
+  p.champs.filter(u=>has(D(S,u),"rot")&&C(S,u).turned).forEach(u=>{const c=C(S,u);p.champs.splice(p.champs.indexOf(u),1);c.arms.forEach(x=>{C(S,x).turned=false;p.items.push(x)});c.arms=[];c.turned=false;if(D(S,u).type.endsWith("Token"))S.tokens[D(S,u).id]++;S.rotN=(S.rotN||0)+1;log(S,`${nm(S,u)} rots away (Rot).`,p.idx)});
   p.discard.push(...p.hand,...p.played);p.hand=[];p.played=[];
   S.players.forEach(q=>q.champs.forEach(u=>{if(C(S,u).arms.some(x=>has(D(S,x),"arm_indomitable")))C(S,u).turned=false}));
   if(S.cfg.ready_at_start)p.champs.forEach(u=>{C(S,u).tmp=0;C(S,u).tmpM=0});else{p.champs.forEach(u=>{C(S,u).turned=false;C(S,u).tmp=0;C(S,u).tmpM=0});p.items.forEach(u=>C(S,u).turned=false)}
@@ -843,7 +849,7 @@ function diplomacy(S,t){
 // ---------- scoring ----------
 function score(S){
   return S.players.map(p=>{
-    const b={Champions:0,Minions:0,"Items and Armaments":0,"Prestige cards":0,Actions:0,Ascendancy:0,Infamy:0,Wounds:0,Abilities:0,Leader:0};
+    const b={Champions:0,Minions:0,"Items and Armaments":0,"Prestige cards":0,Actions:0,Ascendancy:0,Infamy:0,"Critical Hits":0,Abilities:0,Leader:0};
     allCardsFull(S,p).forEach(u=>{const t=ctype(S,u),d=D(S,u);
       if(D(S,u).type==="Minion"&&t==="Minion")b.Minions+=d.prestige;
       else if(d.type==="Minion")b.Minions+=d.prestige;
@@ -853,7 +859,7 @@ function score(S){
       else if(t==="Prestige")b["Prestige cards"]+=d.prestige;
       else if(t==="Ascendancy")b.Ascendancy+=d.prestige;
       else if(t.startsWith("Action"))b.Actions+=d.prestige;});
-    const nw=p.wounds.length;b.Wounds=nw*nw;
+    const nw=p.wounds.length;b["Critical Hits"]=nw*nw;
     b.Abilities=0;const tm=p.trophy.filter(t=>ctype(S,t)==="Minion").length;
     {const gt=allCardsFull(S,p).filter(u=>has(D(S,u),"grave_tithe")).length;if(gt)b.Abilities+=gt*Math.floor((p.banishedN||0)/(S.cfg.grave_tithe_per||3));}
     allCardsFull(S,p).forEach(u=>{const d=D(S,u);
@@ -1018,7 +1024,7 @@ function botFightPlan(S,p,avoid){
   return null;
 }
 function botBattleTeam(S,p){
-  const el=p.champs.filter(u=>!C(S,u).turned||(S.cfg.aegis_battle&&has(D(S,u),"aegis_half")));
+  const el=p.champs.filter(u=>!C(S,u).turned||(S.cfg.aegis_battle&&isAegis(S,u)));
   const mk=mkd(S)||{};const risky=Object.keys(mk).some(k=>/^(start_|djinn|keep_strongest)/.test(k));
   const margin=risky?99:(S.cfg.bot_team_margin!=null?S.cfg.bot_team_margin:2);
   const save=p.battleTeam;p.battleTeam=el.slice();const [tAll,need]=checkPower(S,p);
@@ -1052,7 +1058,7 @@ function botAction(S){
   if(battle&&!p.battled)return S.cfg.battle_team?{t:"faceMonster",team:botBattleTeam(S,p)}:{t:"faceMonster"};
   return {t:"endTurn"};
 }
-root.HOE={exigentOk,exigentCost,exigentCards,minionPower,fightable,tideHolder:S=>{const m=S.cfg["tide_mode_"+S.n+"p"];return m==="turn"?S.turn:m==="rotate"?tideHolderIdx(S):-1},itemsCount,loadData,newGame,apply,botAction,actorSeat,cpower,cost,acquirable,canPlay,checkPower,isBattleTurn,monster,score,ctype,minionNeed,hasCrown,
+root.HOE={isAegis,exigentOk,exigentCost,exigentCards,minionPower,fightable,tideHolder:S=>{const m=S.cfg["tide_mode_"+S.n+"p"];return m==="turn"?S.turn:m==="rotate"?tideHolderIdx(S):-1},itemsCount,loadData,newGame,apply,botAction,actorSeat,cpower,cost,acquirable,canPlay,checkPower,isBattleTurn,monster,score,ctype,minionNeed,hasCrown,
   defs:()=>DEFS,mons:()=>MONS,cfg:()=>CFG};
 })(typeof window!=="undefined"?window:globalThis);
 </script>
@@ -1289,9 +1295,13 @@ function sheetHTML(){
     const sel=(U.bt||[]).filter(u=>el.includes(u));const save=tp.battleTeam;tp.battleTeam=sel.slice();const [tot,need]=HOE.checkPower(s,tp);tp.battleTeam=save;
     const one=u=>{tp.battleTeam=[u];const v=HOE.checkPower(s,tp)[0]-(()=>{tp.battleTeam=[];return HOE.checkPower(s,tp)[0]})();tp.battleTeam=save;return v};
     b=`<h3 class="cz">Battle ${esc(HOE.monster(s).name)}</h3><p style="margin:4px 0">Choose which Champions Battle. Only they Exhaust; the rest stay ready to Fight. Start-of-Battle effects still apply.</p><div class="opts">`;
-    el.forEach(u=>{b+=`<button class="opt ${sel.includes(u)?"on":""}" data-a="bsel" data-u="${u}"><span class="l">${esc(CD(u).name)}${s.cards[u].turned?" (Exhausted, Aegis)":""}</span><span class="r">+${one(u)} Power</span></button>`});
+    b+=`<p class="muted" style="margin:2px 0 6px">${sel.length} of ${el.length} Champions selected. Tap to add or remove.</p>`;
+    el.forEach(u=>{const on=sel.includes(u);b+=`<button class="opt ${on?"on":""}" data-a="bsel" data-u="${u}"><span class="l">${on?"✓ ":"○ "}${esc(CD(u).name)}${s.cards[u].turned?" (Exhausted, Aegis)":""}</span><span class="r">+${one(u)} Power</span></button>`});
     if(!el.length)b+=`<p class="muted">No ready Champions. You can still Battle and ask for a Rally.</p>`;
-    b+=`</div><div class="acts"><button class="btn primary" data-a="battlego">Battle (${tot} of ${need})</button><button class="btn" data-a="bsall">All</button><button class="btn" data-a="closesheet">Cancel</button></div>`;
+    if(tot<need){const out=el.filter(u=>!sel.includes(u)).map(u=>[u,one(u)]).filter(x=>x[1]>0).sort((a,c)=>c[1]-a[1]);
+      const hp=tp.hand.filter(u=>CD(u).keys.some(k=>k[0]==="pump"||k[0]==="power")).map(u=>{const k=CD(u).keys.find(k=>k[0]==="pump"||k[0]==="power");return esc(CD(u).name)+" (+"+k[1]+")"});
+      b+=`<div class="banner" style="display:block;margin-top:8px;border-color:#9b2c2c"><b>You're ${need-tot} short.</b>${out.length?` Not in this Battle: ${out.map(x=>esc(CD(x[0]).name)+" (+"+x[1]+")").join(", ")}.`:""}${hp.length?` In your hand: ${hp.join(", ")}. Cancel and play it first.`:""}${!out.length&&!hp.length?" Nothing else on your board can close the gap. You can still send a Rally cry.":""}</div>`}
+    b+=`</div><div class="acts"><button class="btn primary" data-a="battlego">${tot<need?"Battle anyway":"Battle"} (${tot} of ${need})</button><button class="btn" data-a="bsall">All</button><button class="btn" data-a="closesheet">Cancel</button></div>`;
   }else if(sh.k==="rules"){b=rulesHTML();
   }else if(sh.k==="log"){
     b=`<h3 class="cz">Game log</h3><div class="log">${S().log.slice().reverse().map(e=>`<div><span class="r">R${e.r}${e.s>=0?", "+esc(s.players[e.s].name):""}</span>${esc(e.m)}</div>`).join("")}</div><div class="acts"><button class="btn" data-a="closesheet">Close</button></div>`;
