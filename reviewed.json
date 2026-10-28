@@ -1,5 +1,5 @@
 {
-"version": "v0.27",
+"version": "v0.28",
 "cards": {
 "ST1": {
 "h": "2fd932d87827",
@@ -30,8 +30,8 @@
 "keys": "adamantine"
 },
 "W4": {
-"h": "ba2391826b4d",
-"keys": "fight_draw"
+"h": "6ee965af6cd3",
+"keys": "dexterous"
 },
 "W5": {
 "h": "447639ad9454",
@@ -110,7 +110,7 @@
 "keys": "hungry:7"
 },
 "A8": {
-"h": "0a17cce2f6f4",
+"h": "ca1830c45214",
 "keys": "supercharged_per:1;play_golem"
 },
 "S1": {
@@ -126,24 +126,24 @@
 "keys": "first_action_loot;vs_minion_add:1"
 },
 "S4": {
-"h": "c22190872ef7",
-"keys": "alacrity;vs_minion_add:1"
+"h": "775b3efa5e33",
+"keys": "dexterous;vs_minion_add:1"
 },
 "S5": {
-"h": "aa2a39b68dab",
-"keys": "action_inf_first:1;vs_minion_add:1;ledger:3:1"
+"h": "1e06de7ed854",
+"keys": "action_inf_first:1;ledger:3:1"
 },
 "S6": {
-"h": "c0d9cfd7224b",
-"keys": "cost:Action:1;vs_minion_add:1;ledger:3:1"
+"h": "d4146501db2c",
+"keys": "cost:Action:1;ledger:3:1"
 },
 "S7": {
 "h": "09c77629f6a8",
 "keys": "lethality:3;pierce_all"
 },
 "S8": {
-"h": "80f47f27e4e3",
-"keys": "lethality:3;alacrity"
+"h": "e4ccf85e88ed",
+"keys": "lethality:3;dexterous"
 },
 "N1": {
 "h": "fdfba9acc94a",
@@ -422,7 +422,7 @@
 "keys": "power_eq_items"
 },
 "Z7": {
-"h": "d1ff05e2a1c3",
+"h": "d73da4f51833",
 "keys": ""
 },
 "Z8": {
@@ -452,10 +452,6 @@
 "T13": {
 "h": "2f5410cb7ca3",
 "keys": "rat_scale:2;resilient"
-},
-"Z9": {
-"h": "3278581c2aec",
-"keys": ""
 }
 },
 "monsters": {
