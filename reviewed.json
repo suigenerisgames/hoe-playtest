@@ -1,5 +1,5 @@
 {
-"version": "v0.30",
+"version": "v0.30c",
 "cards": {
 "ST1": {
 "h": "2fd932d87827",
@@ -221,10 +221,6 @@
 "h": "05e36b751109",
 "keys": "acq_draw:99"
 },
-"I12": {
-"h": "6aeb376d2d03",
-"keys": "crown"
-},
 "R1": {
 "h": "c57ed0d673bd",
 "keys": "arm:1"
@@ -317,10 +313,6 @@
 "h": "7a9e2b055e8b",
 "keys": "pump:6;draw:1;react_pump:6;react_comm;exigent"
 },
-"M8": {
-"h": "fdb8dc07f128",
-"keys": "pump:10;draw:1;react_pump:10;react_knight;exigent"
-},
 "X1": {
 "h": "c6ff51b7efd5",
 "keys": ""
@@ -398,8 +390,8 @@
 "keys": ""
 },
 "T10": {
-"h": "23e9622bc862",
-"keys": "draw:1;banish_hand:1"
+"h": "40f3890c2830",
+"keys": "draw:1;banish_any:1"
 },
 "T12": {
 "h": "87f955957699",
@@ -410,7 +402,7 @@
 "keys": "wound"
 },
 "Z4": {
-"h": "b0754d32b33e",
+"h": "fc48d077d6d9",
 "keys": ""
 },
 "Z5": {
@@ -452,6 +444,10 @@
 "T13": {
 "h": "2f5410cb7ca3",
 "keys": "rat_scale:2;resilient"
+},
+"X13": {
+"h": "c6ff51b7efd5",
+"keys": ""
 }
 },
 "monsters": {
@@ -460,36 +456,36 @@
 "keys": "start_vanq_strong_le:4"
 },
 "Hydra Basilisk": {
-"h": "007723f2cb03",
-"keys": "per_player:1"
+"h": "92e163d8a5a9",
+"keys": "reveal_stone"
 },
 "Ironfist Golem": {
 "h": "98d2a093e267",
 "keys": "armor:1"
 },
 "Magmatic Ooze": {
-"h": "9b3ef1dd1dce",
-"keys": "reveal_sac_le:3;min_contrib:2"
+"h": "69a7dd17d8b0",
+"keys": "reveal_sac_le:3;keep_strongest:2"
 },
 "The Dark Knight": {
 "h": "85eb2b1b8da1",
 "keys": "per_trophy_minion:1"
 },
 "Adaptive Elemental": {
-"h": "f4ba402f9e50",
-"keys": "reveal_vanq_strong_le:5"
+"h": "6f47af363827",
+"keys": "reveal_vanq_strong;per_champ:1"
 },
 "Aspect of War": {
-"h": "6577ce0ae1c4",
-"keys": "per_arm:2;fail_vanq_strong:1"
+"h": "d089feb565ea",
+"keys": "per_item:1;fail_vanq_strong:1"
 },
 "Priquella, Demon Witch": {
 "h": "f5fd8a3bced7",
 "keys": "reveal_sac_le:3;strongest_minus:3"
 },
 "Quaz Ri, Archfiend": {
-"h": "a715cfeecd02",
-"keys": "start_vanq_choice_ge:3"
+"h": "a072f860ecec",
+"keys": "quaz:6:3"
 },
 "Spectral Gravehound": {
 "h": "0b964716e9b7",
@@ -512,8 +508,8 @@
 "keys": "plus_l1"
 },
 "Unspeakable Horror": {
-"h": "da3e2669f53a",
-"keys": "keep_strongest:3;no_rally"
+"h": "55c9c3999a71",
+"keys": "keep_strongest:4;no_rally"
 }
 }
 }
