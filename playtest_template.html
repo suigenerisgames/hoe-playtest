@@ -882,7 +882,7 @@ function diplomacy(S,t){
 // ---------- scoring ----------
 function score(S){
   return S.players.map(p=>{
-    const b={Champions:0,Minions:0,"Items and Armaments":0,"Prestige cards":0,Actions:0,Ascendancy:0,Infamy:0,"Critical Hits":0,Abilities:0,Leader:0};
+    const b={Champions:0,Minions:0,"Items and Armaments":0,"Prestige cards":0,Actions:0,Ascendancy:0,Infamy:0,"Critical Hit Prestige":0,Abilities:0,Leader:0};
     allCardsFull(S,p).forEach(u=>{const t=ctype(S,u),d=D(S,u);
       if(D(S,u).type==="Minion"&&t==="Minion")b.Minions+=d.prestige;
       else if(d.type==="Minion")b.Minions+=d.prestige;
@@ -893,7 +893,7 @@ function score(S){
       else if(t==="Influence")b["Prestige cards"]+=d.prestige;
       else if(t==="Ascendancy")b.Ascendancy+=d.prestige;
       else if(t.startsWith("Action"))b.Actions+=d.prestige;});
-    const nw=p.wounds.length;b["Critical Hits"]=nw*nw;
+    const nw=p.wounds.length;b["Critical Hit Prestige"]=nw*nw;
     b.Abilities=0;const tm=p.trophy.filter(t=>ctype(S,t)==="Minion").length;
     {const gt=allCardsFull(S,p).filter(u=>has(D(S,u),"grave_tithe")).length;if(gt)b.Abilities+=gt*Math.floor((p.banishedN||0)/(S.cfg.grave_tithe_per||3));}
     allCardsFull(S,p).forEach(u=>{const d=D(S,u);
@@ -1197,6 +1197,7 @@ function tick(){
   clearTimeout(U.timer);
   const a=actor();
   if(a>=0&&isHuman(a)){U.view=a}
+  if(U.autoRally!=null){if(s.choice&&s.choice.kind==="rallycry"&&s.choice.seat===U.autoRally){U.autoRally=null;pushHist(s.choice.seat);HOE.apply(s,{t:"choose",key:"yes"});return tick()}if(s.over||!s.battleQueue||s.battleDone.includes(U.autoRally))U.autoRally=null}
   const ck=s.choice?s.choice.kind+s.choice.seat+s.choice.prompt:"";if(ck!==U.lastChoice){U.hideChoice=false;U.lastChoice=ck}
   render();
   if(!s.over&&a>=0&&!isHuman(a)&&!U.paused){U.timer=setTimeout(botStep,SPEEDS[U.speed])}
@@ -1327,6 +1328,7 @@ function sheetHTML(){
       if(where==="hand"&&owner===tp)b+=`<button class="btn primary" data-a="play" data-u="${u}" ${HOE.canPlay(s,tp,u)?"":"disabled"}>${t==="Armament"?"Equip":"Play"}</button>`;
       if(where==="items"&&owner===tp&&d.type==="Armament"&&s.cfg.arm_equip)b+=`<button class="btn primary" data-a="equipitem" data-u="${u}" ${(tp.equippedThisTurn||[]).includes(u)||!tp.champs.length?"disabled":""}>Equip to a Champion</button>`;
       if(where==="items"&&owner===tp&&d.type==="Armament"&&HOE.cfg().equip_action&&tp.champs.length)b+=`<button class="btn primary" data-a="equiparm" data-u="${u}" ${c.eqTurn===s.turnCount?"disabled":""}>${c.eqTurn===s.turnCount?"Equipped this turn":"Equip"}</button>`;
+      if(where==="champs"&&owner===tp&&HOE.cfg().equip_action&&c.arms&&c.arms.length)c.arms.filter(a=>CD(a).type==="Armament").forEach(a=>{const done=s.cards[a].eqTurn===s.turnCount;b+=`<button class="btn" data-a="equiparm" data-u="${a}" ${done||tp.champs.length<2?"disabled":""}>${done?esc(CD(a).name)+": moved this turn":"Move "+esc(CD(a).name)+" to another Champion"}</button>`});
       if((where==="items"||where==="champs")&&owner===tp&&d.keys.some(k=>k[0]==="util"))b+=`<button class="btn primary" data-a="util" data-u="${u}" ${c.turned?"disabled":""}>${c.turned?"Already used":"Utilize"}</button>`;
       if((where==="arena"||where==="deck"||where==="other")&&o)b+=`<button class="btn primary" data-a="buy" data-u="${u}" ${o.ok?"":"disabled"}>${d.type==="Champion"?"Enlist":"Acquire"} for ${o.cost}</button>${o.ok?"":`<span class="muted" style="align-self:center">${D2(u).type==="Ascendancy"&&tp.wounds.length<2?"Needs 2 Critical Hits":(s.monster&&HOE.exigentCards(s).includes(u)?"Exigent: can't be Acquired while a Monster is in play":"Not enough Influence")}</span>`}`;
       if(where==="arena"&&HOE.exigentOk(s,tp,u))b+=`<button class="btn rift" data-a="exigent" data-u="${u}">Exigent: pay ${HOE.exigentCost(s,u)} and use it now</button>`;if((where==="arena"||where==="town")&&t==="Minion")b+=`<button class="btn rift" data-a="fightopen" data-u="${u}">Fight this Minion (needs ${HOE.minionNeed(s,tp,u)})</button>`;
@@ -1343,15 +1345,15 @@ function sheetHTML(){
     const tp=s.players[s.turn];const cf=HOE.cfg();
     const el=tp.champs.filter(u=>!s.cards[u].turned||(cf.aegis_battle&&CD(u).keys.some(k=>k[0]==="aegis_half")));
     const sel=(U.bt||[]).filter(u=>el.includes(u));const save=tp.battleTeam;tp.battleTeam=sel.slice();const [tot,need]=HOE.checkPower(s,tp);tp.battleTeam=save;
-    const one=u=>{tp.battleTeam=[u];const v=HOE.checkPower(s,tp)[0]-(()=>{tp.battleTeam=[];return HOE.checkPower(s,tp)[0]})();tp.battleTeam=save;return v};
+    const mk=HOE.monster(s).kd||{};const canCry=!!(cf.rally&&cf.rally_cry&&s.n>1);const blocked=canCry&&("no_rally" in mk);const rl=canCry&&!blocked?s.players.filter(q=>q!==tp).map(q=>{const vs=q.champs.filter(u=>!s.cards[u].turned||CD(u).keys.some(k=>k[0]==="aegis_hand")||HOE.isAegis(s,u)).map(u=>{const v=HOE.cpower(s,q,u,false,true);return s.cards[u].turned&&HOE.isAegis(s,u)?Math.ceil(v/2):v});return [q,vs.length?Math.max(...vs):0,vs.length]}).filter(x=>x[2]):[];const rlMax=rl.reduce((t,x)=>t+x[1],0);const one=u=>{tp.battleTeam=[u];const v=HOE.checkPower(s,tp)[0]-(()=>{tp.battleTeam=[];return HOE.checkPower(s,tp)[0]})();tp.battleTeam=save;return v};
     b=`<h3 class="cz">Battle ${esc(HOE.monster(s).name)}</h3><p style="margin:4px 0">Choose which Champions Battle. Only they Exhaust; the rest stay ready to Fight. Start-of-Battle effects still apply.${HOE.monster(s).kd&&HOE.monster(s).kd.keep_strongest?` <b>Only your ${HOE.monster(s).kd.keep_strongest[0]} strongest Champions count against ${esc(HOE.monster(s).name)}.</b>`:""}</p><div class="opts">`;
     b+=`<p class="muted" style="margin:2px 0 6px">${sel.length} of ${el.length} Champions selected. Tap to add or remove.</p>`;
     el.forEach(u=>{const on=sel.includes(u);b+=`<button class="opt ${on?"on":""}" data-a="bsel" data-u="${u}"><span class="l">${on?"✓ ":"○ "}${esc(CD(u).name)}${s.cards[u].turned?" (Exhausted, Aegis)":""}</span><span class="r">+${one(u)} Power</span></button>`});
-    if(!el.length)b+=`<p class="muted">No ready Champions. You can still Battle and ask for a Rally.</p>`;
+    if(!el.length)b+=`<p class="muted">No ready Champions.</p>`;
     if(tot<need){const out=el.filter(u=>!sel.includes(u)).map(u=>[u,one(u)]).filter(x=>x[1]>0).sort((a,c)=>c[1]-a[1]);
       const hp=tp.hand.filter(u=>CD(u).keys.some(k=>k[0]==="pump"||k[0]==="power")).map(u=>{const k=CD(u).keys.find(k=>k[0]==="pump"||k[0]==="power");return esc(CD(u).name)+" (+"+k[1]+")"});
-      b+=`<div class="banner" style="display:block;margin-top:8px;border-color:#9b2c2c"><b>You're ${need-tot} short.</b>${out.length?` Not in this Battle: ${out.map(x=>esc(CD(x[0]).name)+" (+"+x[1]+")").join(", ")}.`:""}${hp.length?` In your hand: ${hp.join(", ")}. Cancel and play it first.`:""}${!out.length&&!hp.length?" Nothing else on your board can close the gap. You can still send a Rally cry.":""}</div>`}
-    b+=`</div><div class="acts"><button class="btn primary" data-a="battlego">${tot<need?"Battle anyway":"Battle"} (${tot} of ${need})</button><button class="btn" data-a="bsall">All</button><button class="btn" data-a="closesheet">Cancel</button></div>`;
+      b+=`<div class="banner" style="display:block;margin-top:8px;border-color:#9b2c2c"><b>You're ${need-tot} short.</b>${out.length?` Not in this Battle: ${out.map(x=>esc(CD(x[0]).name)+" (+"+x[1]+")").join(", ")}.`:""}${hp.length?` In your hand: ${hp.join(", ")}. Cancel and play it first.`:""}${!out.length&&!hp.length?" Nothing else on your board can close the gap.":""}${rl.length?`<br><b>Rally:</b> ${rl.map(x=>esc(x[0].name)+" can Rally up to +"+x[1]).join(", ")}.${rlMax>=need-tot?" That covers the gap.":" Even all of it won't cover the gap."}`:blocked?`<br><b>No Rally:</b> ${esc(HOE.monster(s).name)} blocks Rally cries.`:canCry?"<br><b>No Rally:</b> no other player has a ready Champion to Rally.":""}</div>`}
+    b+=`</div><div class="acts"><button class="btn primary" data-a="${tot<need&&rl.length?"battlerally":"battlego"}">${tot<need?(rl.length?"Battle and send Rally cry":"Battle anyway"):"Battle"} (${tot} of ${need})</button><button class="btn" data-a="bsall">All</button><button class="btn" data-a="closesheet">Cancel</button></div>`;
   }else if(sh.k==="rules"){b=rulesHTML();
   }else if(sh.k==="log"){
     b=`<h3 class="cz">Game log</h3><div class="log">${S().log.slice().reverse().map(e=>`<div><span class="r">R${e.r}${e.s>=0?", "+esc(s.players[e.s].name):""}</span>${esc(e.m)}</div>`).join("")}</div><div class="acts"><button class="btn" data-a="closesheet">Close</button></div>`;
@@ -1379,7 +1381,7 @@ function rulesHTML(){
   const sec=(t,items)=>`<h3 class="cz" style="font-size:15px;margin-top:14px">${t}</h3><ul style="margin:6px 0 0;padding-left:20px">${items.map(i=>`<li style="margin:3px 0">${i}</li>`).join("")}</ul>`;
   const tiers=String(cfg.solo_tier_names||"Bronze,Silver,Gold,Hero").split(",").map((n,i)=>n+" "+String(cfg.solo_tiers||"70,80,90,100").split(",")[i]).join(", ");
   return `<h3 class="cz">Quick rules</h3><p class="muted" style="margin:2px 0 0">Cards ${esc(HOE_DATA.version)}. Most Prestige at the end wins.</p>`+
-  sec("Your turn: do anything, in any order",["<b>Play cards</b> from your hand. Champions and Items stay in play.","<b>Utilize</b> each Item once: Exhaust it and use its ability.","<b>Equip</b> each Armament in play once: attach it to one of your Champions. A Champion can hold several.","<b>Fight Minions</b> with ready Champions. Their combined Power must equal or beat the Minion's.","<b>Battle the Monster</b> once, if one is out and you haven't yet.","<b>Acquire</b> cards from the Arena or Town Center with Influence. Acquiring a Champion or Militia is called <b>Enlisting</b>.","Mix and match: play a Power boost, Fight a Minion, use its Spoils to Acquire, then Battle."])+
+  sec("Your turn: do anything, in any order",["<b>Play cards</b> from your hand. Champions and Items stay in play.","<b>Utilize</b> each Item once: Exhaust it and use its ability.","<b>Equip</b> each Armament in play once: attach it to one of your Champions, or move it to a different one. A Champion can hold several. To move one, tap the Champion wearing it.","<b>Fight Minions</b> with ready Champions. Their combined Power must equal or beat the Minion's.","<b>Battle the Monster</b> once, if one is out and you haven't yet.","<b>Acquire</b> cards from the Arena or Town Center with Influence. Acquiring a Champion or Militia is called <b>Enlisting</b>.","Mix and match: play a Power boost, Fight a Minion, use its Spoils to Acquire, then Battle."])+
   sec("End of your turn",["Refill empty Arena slots now, not when a card is taken.","Discard your hand and played cards, then draw 5. Exhausted cards Ready at the start of your next turn."])+
   sec("Champions",["Stay in play until Destroyed. When a Champion is Destroyed or goes to the discard pile from play, its Armaments stay in play, unequipped, ready to Equip again.","<b>Exhausted Champions can't Fight or Battle</b> (Steadfast Commander's Aegis can still Battle, at half Power). Fighting and Battling Exhausts them."])+
   sec("Minions",["Defeated Minions go to your Trophy pile and score their Prestige. <b>Spoils</b> is the reward for Defeating one.","<b>Attack</b> effects trigger when a Minion or Monster enters the Arena, and hit every player.","Arena Minions get +1 Power for each Monster that has left play.","Mutant Rats wait in the Town Center. Each Rat in your Trophy pile makes your next Rat +2 Power tougher. Hunter and Lethality don't work on them."])+
@@ -1416,7 +1418,7 @@ document.addEventListener("click",e=>{
     case "fightopen":U.fight=[];U.sheet={k:"fight",u};render();break;
     case "fsel":{const f=U.fight;const k=f.indexOf(u);k<0?f.push(u):f.splice(k,1);render();break}
     case "fightgo":act({t:"fight",m:U.sheet.u,team:U.fight.slice()});break;
-    case "face":{const s=S(),tp=s.players[s.turn],cf=HOE.cfg();if(!cf.battle_team){act({t:"faceMonster"});break}U.bt=tp.champs.filter(u=>!s.cards[u].turned||(cf.aegis_battle&&CD(u).keys.some(k=>k[0]==="aegis_half")));U.sheet={k:"battle"};render();break}case "bsel":{const f=U.bt;const k=f.indexOf(u);k<0?f.push(u):f.splice(k,1);render();break}case "bsall":{const s=S(),tp=s.players[s.turn],cf=HOE.cfg();U.bt=tp.champs.filter(x=>!s.cards[x].turned||(cf.aegis_battle&&CD(x).keys.some(k=>k[0]==="aegis_half")));render();break}case "battlego":U.sheet=null;act({t:"faceMonster",team:U.bt.slice()});break;
+    case "face":{const s=S(),tp=s.players[s.turn],cf=HOE.cfg();if(!cf.battle_team){act({t:"faceMonster"});break}U.bt=tp.champs.filter(u=>!s.cards[u].turned||(cf.aegis_battle&&CD(u).keys.some(k=>k[0]==="aegis_half")));U.sheet={k:"battle"};render();break}case "bsel":{const f=U.bt;const k=f.indexOf(u);k<0?f.push(u):f.splice(k,1);render();break}case "bsall":{const s=S(),tp=s.players[s.turn],cf=HOE.cfg();U.bt=tp.champs.filter(x=>!s.cards[x].turned||(cf.aegis_battle&&CD(x).keys.some(k=>k[0]==="aegis_half")));render();break}case "battlego":U.sheet=null;act({t:"faceMonster",team:U.bt.slice()});break;case "battlerally":{U.sheet=null;U.autoRally=S().turn;act({t:"faceMonster",team:U.bt.slice()});break}
     case "end":act({t:"endTurn"});break;
     case "allinf":{const p=S().players[S().turn];p.hand.filter(x=>ctype(x)==="Influence").forEach(x=>act({t:"play",u:x}));break}
     case "disentomb":act({t:"disentomb"});break;
