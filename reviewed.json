@@ -1,5 +1,5 @@
 {
-"version": "v0.30d",
+"version": "v0.30e",
 "cards": {
 "ST1": {
 "h": "2fd932d87827",
@@ -414,7 +414,7 @@
 "keys": "power_eq_items"
 },
 "Z7": {
-"h": "3440081f1701",
+"h": "33adea80558b",
 "keys": ""
 },
 "Z8": {
