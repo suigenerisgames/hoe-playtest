@@ -45,6 +45,18 @@ h1,h2,h3,.cz{font-family:Cinzel,Georgia,serif;font-weight:700;letter-spacing:.02
 .banner .grow{flex:1;min-width:160px}
 /* sections */
 .sec{margin-top:14px}
+.ovf{margin:10px 2px 0;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--panel)}
+.ovf .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px}
+.ovf .hd b{font-size:15px}
+.ovf.warn{border-color:var(--bad)}
+.ovf.warn .hd .n{color:var(--bad);font-weight:700}
+.ovf .stk{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.cb{width:22px;height:31px;border-radius:4px;flex:none}
+.cb.on{background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.28) 0 3px,transparent 4px),repeating-linear-gradient(45deg,rgba(255,255,255,.10) 0 2px,transparent 2px 6px),linear-gradient(160deg,var(--rift),#2b1840);border:1.5px solid var(--gold);box-shadow:0 1px 2px var(--shade)}
+.cb.off{border:1.5px dashed var(--line);opacity:.7}
+.cb.on.new{animation:cbin .45s ease-out}
+@keyframes cbin{from{transform:translateY(-8px) rotate(-6deg);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.cb.on.new{animation:none}}
 .sec h2{font-size:15px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:baseline}
 .sec h2 small{font-family:Alegreya,serif;font-weight:400;color:var(--muted);font-size:14px;letter-spacing:0}
 .row{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x proximity}
@@ -1231,7 +1243,7 @@ function render(){
     h+=`<div class="sec monster">${HOE_ART["MON:"+m.name]?`<div class="monart" style="background-image:url(${HOE_ART["MON:"+m.name]})"></div>`:""}<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><span style="font-size:13px;opacity:.8">Level ${m.level} Monster</span><h3 class="cz">${esc(m.name)}</h3></div><div class="pw">${m.power+(s.soloPowerUp?2*m.level:0)}</div></div>
     <div class="ab">${s.soloPowerUp?`<b>Solo Power Up:</b> +${2*m.level} Power (included above). `:""}${kwi(m.ability)}</div><div class="pips">${s.players.map(p=>{const done=s.battleDone.includes(p.idx);const ok=s.woundsThis.includes(p.idx);const now=q[0]===p.idx;
       return `<span class="pip ${done?(ok?"ok":"bad"):(now?"now":"")}">${esc(p.name)}${done?(ok?" hit":" failed"):(now?" now":"")}</span>`}).join("")}</div></div>`}
-  else if(s.levelNext<=3){h+=`<p class="muted" style="font-size:14px;margin:10px 2px 0">${s.portalCool!=null&&s.round<=s.portalCool&&s.n>1?`<b>Portal Cooldown:</b> portals do nothing through the end of round ${s.portalCool}. `:""}Next portal opens the Level ${s.levelNext} Monster${s.soloPowerUp?` (Solo Power Up: +${2*s.levelNext} Power)`:""}. Arena deck: ${s.arenaDeck.length} cards.</p>`}
+  else if(s.levelNext<=3){h+=`<p class="muted" style="font-size:14px;margin:10px 2px 0">${s.portalCool!=null&&s.round<=s.portalCool&&s.n>1?`<b>Portal Cooldown:</b> portals do nothing through the end of round ${s.portalCool}. `:""}Next portal opens the Level ${s.levelNext} Monster${s.soloPowerUp?` (Solo Power Up: +${2*s.levelNext} Power)`:""}. Arena deck: ${s.arenaDeck.length} cards.</p>${(()=>{const th=HOE.cfg()["rift_pressure_"+s.n+"p"];if(!th||s.n<2)return"";const pv=Math.min(s.pressure||0,th),left=th-pv,w=left<=2;const isNew=U._ovf!=null&&pv>U._ovf;U._ovf=pv;return `<div class="ovf${w?" warn":""}" role="group" aria-label="Rift Overflow: ${pv} of ${th} cards"><div class="hd"><b>Rift Overflow</b><span class="n">${pv}/${th}${left===1?", Monster emerges on the next sweep":w?`, Monster emerges in ${left} sweeps`:""}</span></div><div class="stk">${Array.from({length:th},(_,k)=>`<span class="cb ${k<pv?"on":"off"}${isNew&&k===pv-1?" new":""}"></span>`).join("")}</div></div>`})()}`}
   // opponents
   h+=`<div class="sec"><h2>Players <small>Prestige so far</small></h2>`;
   s.players.forEach((p,i)=>{if(i===U.view)return;
