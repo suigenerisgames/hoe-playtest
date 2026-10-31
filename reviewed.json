@@ -1,5 +1,5 @@
 {
-"version": "v0.30e",
+"version": "v0.30g",
 "cards": {
 "ST1": {
 "h": "2fd932d87827",
@@ -350,8 +350,8 @@
 "keys": "reveal:most_sacrifice"
 },
 "X10": {
-"h": "abb5b6fd18dc",
-"keys": ""
+"h": "b24b7470b970",
+"keys": "hex_trophy:6"
 },
 "X11": {
 "h": "5eb6a2451962",
@@ -394,8 +394,8 @@
 "keys": "draw:1;banish_any:1"
 },
 "T12": {
-"h": "87f955957699",
-"keys": "snitch:2"
+"h": "35d9a3c53dae",
+"keys": "snitch:1"
 },
 "Z1": {
 "h": "1eb03afec573",
@@ -480,7 +480,7 @@
 "keys": "per_item:1;fail_vanq_strong:1"
 },
 "Priquella, Demon Witch": {
-"h": "f5fd8a3bced7",
+"h": "0b48ecd7be8b",
 "keys": "reveal_sac_le:3;strongest_minus:3"
 },
 "Quaz Ri, Archfiend": {
