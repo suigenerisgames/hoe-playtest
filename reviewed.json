@@ -1,5 +1,5 @@
 {
-"version": "v0.30g",
+"version": "v0.30n",
 "cards": {
 "ST1": {
 "h": "2fd932d87827",
@@ -166,11 +166,11 @@
 "keys": "acq_banish:2;raise_dead_own"
 },
 "N6": {
-"h": "f1cac56197ca",
+"h": "257427c605d1",
 "keys": "resurrect:0"
 },
 "N7": {
-"h": "9346d66f97c4",
+"h": "dcf399edeee6",
 "keys": "play_sacrifice;undead_bonus:1"
 },
 "N8": {
@@ -262,7 +262,7 @@
 "keys": "draw:2;discard:1;exigent"
 },
 "C5": {
-"h": "2d5939c71fd4",
+"h": "1e67cdf664f8",
 "keys": "draw:1;windfall"
 },
 "C6": {
@@ -294,12 +294,12 @@
 "keys": "draw:3;exigent"
 },
 "M1": {
-"h": "a51737501268",
-"keys": "pump:3;draw:1;react_pump:3;react_banish;exigent"
+"h": "5f15c203b9be",
+"keys": "pump:4;draw:1;react_pump:4;exigent"
 },
 "M2": {
-"h": "d6d56a6eb72b",
-"keys": "pump:4;draw:1;react_pump:4;react_top;exigent"
+"h": "8f9572056898",
+"keys": "pump:6;draw:1;react_pump:6;exigent"
 },
 "M5": {
 "h": "a8f823de4dec",
@@ -310,8 +310,8 @@
 "keys": "tokens:2;exigent"
 },
 "M7": {
-"h": "7a9e2b055e8b",
-"keys": "pump:6;draw:1;react_pump:6;react_comm;exigent"
+"h": "2776fce66185",
+"keys": "pump:8;draw:1;react_pump:8;exigent"
 },
 "X1": {
 "h": "c6ff51b7efd5",
@@ -414,7 +414,7 @@
 "keys": "power_eq_items"
 },
 "Z7": {
-"h": "33adea80558b",
+"h": "c649c6193e61",
 "keys": ""
 },
 "Z8": {
@@ -438,7 +438,7 @@
 "keys": "leader"
 },
 "L-Nec": {
-"h": "1b9346bc275e",
+"h": "cab9178a569e",
 "keys": "leader"
 },
 "T13": {
@@ -496,8 +496,8 @@
 "keys": "armor:1;armor_ifc:10:1;reveal_vanq_weak"
 },
 "Chaotic Adjudicator": {
-"h": "bc576711b826",
-"keys": "start_vanq_strong_le:6;fail_infamy:2;reveal_vanq_weak"
+"h": "6143e6597954",
+"keys": "start_vanq_strong_le:6;fail_infamy_plus:1;reveal_vanq_weak"
 },
 "Djinn of the Infinite": {
 "h": "41d943ecc4ba",
