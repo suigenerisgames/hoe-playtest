@@ -1157,6 +1157,7 @@ function renderSetup(){
   if(st.n===1){const tn=String(HOE.cfg().solo_tier_names||"Bronze,Silver,Gold,Hero").split(","),tv=String(HOE.cfg().solo_tiers||"70,80,90,100").split(",");
     h+=`<div class="banner" style="display:block"><b>Solo</b>: reach a Prestige target before the game ends. ${tn.map((n,i)=>`${n} ${tv[i]}`).join(", ")}.<div class="field" style="margin:8px 0 0"><label>Difficulty</label><div class="seg"><button class="${st.challenge?"":"on"}" data-a="chal" data-v="0">Standard</button><button class="${st.challenge?"on":""}" data-a="chal" data-v="1">Heroic</button></div></div><div class="field" style="margin:8px 0 0"><label>Solo Power Up</label><div class="seg"><button class="${st.powerUp?"":"on"}" data-a="pup" data-v="0">Off</button><button class="${st.powerUp?"on":""}" data-a="pup" data-v="1">On</button></div><div class="muted" style="font-size:13px;margin-top:4px">Playtest rule: Monsters get +2 Power for each of their Levels (+2, +4, +6).</div></div></div>`}
   h+=`<div class="sec"><h2>Fixed Portals <small>optional</small></h2><div class="seg" role="group" aria-label="Fixed Portals"><button class="${st.fixed?"":"on"}" data-a="fxp" data-v="0">Off</button><button class="${st.fixed?"on":""}" data-a="fxp" data-v="1">On</button></div>${st.fixed?`<div class="muted" style="font-size:14px;margin:6px 0">If you prefer consistent fixed portals, toggle this mode. Portal cards and Rift Overflow are off, and Monsters emerge in rounds 6, 10 and 13${st.n>=3?", on the Rift Tide holder's turn":""}.</div>`:""}</div>`;
+  h+=st.n>=2&&!st.fixed?`<div class="sec"><h2>Rift Overflow <small>optional</small></h2><div class="seg" role="group" aria-label="Rift Overflow"><button class="${st.ovf==="5"?"":"on"}" data-a="ovfo" data-v="6">6 rounds</button><button class="${st.ovf==="5"?"on":""}" data-a="ovfo" data-v="5">5 rounds</button></div>${st.ovf==="5"?`<div class="muted" style="font-size:14px;margin:6px 0">Test mode: the next Monster emerges after 5 rounds with no Monster, instead of 6.</div>`:""}</div>`:"";
   h+=`<div class="sec">`;
   for(let i=0;i<st.n;i++){const s=st.seats[i];
     h+=`<div class="seat"><input aria-label="Seat ${i+1} name" value="${esc(s.name)}" data-a="name" data-i="${i}">
@@ -1177,7 +1178,7 @@ function startGame(){
   const shuffled=pool.sort(()=>Math.random()-.5);
   const seats=st.seats.slice(0,st.n).map(s=>({name:s.name.trim()||"Player",guild:s.guild==="Random"?shuffled.pop():s.guild,ctrl:s.ctrl}));
   const seed=st.seed?parseInt(st.seed)||1:Math.floor(Math.random()*1e9);
-  U.S=HOE.newGame({n:st.n,seed,seats,seedDepth:st.n===1&&st.challenge?(HOE.cfg().solo_challenge_seed||15):undefined,soloPowerUp:st.n===1&&!!st.powerUp,cfg:st.fixed?{fixed_portals:"6,10,13",fixed_tide_first:1}:{}});U.hist=[];U.passed=-1;U.paused=false;U.sheet=null;
+  U.S=HOE.newGame({n:st.n,seed,seats,seedDepth:st.n===1&&st.challenge?(HOE.cfg().solo_challenge_seed||15):undefined,soloPowerUp:st.n===1&&!!st.powerUp,cfg:st.fixed?{fixed_portals:"6,10,13",fixed_tide_first:1}:(st.ovf==="5"?{rift_pressure_2p:5,rift_pressure_3p:5,rift_pressure_4p:5,rift_pressure_5p:5}:{})});U.hist=[];U.passed=-1;U.paused=false;U.sheet=null;
   const h=U.S.players.findIndex(p=>p.ctrl==="human");U.view=h<0?0:h;U.peek=h<0;
   tick();
 }
@@ -1424,7 +1425,7 @@ document.addEventListener("click",e=>{
   const st=U.setup;
   switch(a){
     case "n":st.n=+v;if(st.n===1)st.seats[0].ctrl="human";renderSetup();break;
-    case "chal":st.challenge=v==="1";renderSetup();break;case "fxp":st.fixed=v==="1";renderSetup();break;case "pup":st.powerUp=v==="1";renderSetup();break;
+    case "chal":st.challenge=v==="1";renderSetup();break;case "fxp":st.fixed=v==="1";renderSetup();break;case "ovfo":st.ovf=v;renderSetup();break;case "pup":st.powerUp=v==="1";renderSetup();break;
     case "speed":U.speed=v;U.S?render():renderSetup();break;
     case "start":startGame();break;
     case "resume":{const sv=store("hoe_save");U.S=sv.S;U.hist=[];const h=U.S.players.findIndex(p=>p.ctrl==="human");U.view=h<0?0:h;U.peek=h<0;U.passed=-1;tick();break}

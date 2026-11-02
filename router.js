@@ -7,7 +7,7 @@ const crypto = require("crypto");
 const path = require("path");
 const fs = require("fs");
 const cards = require("./cards");
-const TEMPLATE = fs.readFileSync(path.join(__dirname, "public", "playtest_template.html"), "utf8");
+const TEMPLATE = fs.readFileSync([path.join(__dirname, "public", "playtest_template.html"), path.join(__dirname, "playtest_template.html")].find((f) => fs.existsSync(f)) || path.join(__dirname, "public", "playtest_template.html"), "utf8");
 cards.refresh(true);
 
 const PASSWORD = process.env.PLAYTEST_PASSWORD || "";
