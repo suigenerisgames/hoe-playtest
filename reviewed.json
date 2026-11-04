@@ -1,21 +1,21 @@
 {
-"version": "v0.30p",
+"version": "v0.30u",
 "cards": {
 "ST1": {
 "h": "2fd932d87827",
 "keys": ""
 },
 "ST2": {
-"h": "d4497f4348eb",
-"keys": ""
+"h": "45d17dd59ab2",
+"keys": "flavor"
 },
 "ST3": {
 "h": "fa03f1d75365",
 "keys": "util:draw:1;util:discard:1;util:self_banish;enter_exhausted"
 },
 "ST4": {
-"h": "83163602e2a0",
-"keys": ""
+"h": "d23ee1c01077",
+"keys": "flavor"
 },
 "W1": {
 "h": "8d72d0a425bf",
@@ -82,8 +82,8 @@
 "keys": "blessed_eq:2;divine_hand:3"
 },
 "A1": {
-"h": "4abfeee30f91",
-"keys": "util:nextcost:Item:1"
+"h": "a16baf9aaec5",
+"keys": "first_cost:Item:1"
 },
 "A2": {
 "h": "ee18bc463f7d",
@@ -202,8 +202,8 @@
 "keys": "util:inf:1;util:draw:1"
 },
 "I7": {
-"h": "83163602e2a0",
-"keys": ""
+"h": "85c1d0e5c145",
+"keys": "flavor"
 },
 "I8": {
 "h": "0ec2647ffda5",
@@ -238,12 +238,12 @@
 "keys": "arm:3"
 },
 "R5": {
-"h": "8459538c01da",
-"keys": "arm_guild:1"
+"h": "c99e7530d9f6",
+"keys": "arm_guild:1;arm_militia:1"
 },
 "R6": {
-"h": "7b1c29629877",
-"keys": "arm:2;arm_protect"
+"h": "58dc8b09fedf",
+"keys": "arm:2;arm_protect_any"
 },
 "R7": {
 "h": "a0b0acf68984",
@@ -302,8 +302,8 @@
 "keys": "pump:6;draw:1;react_pump:6;exigent"
 },
 "M5": {
-"h": "a8f823de4dec",
-"keys": "draw:1;banish_hand:1;inf:2"
+"h": "e0f43a13bfda",
+"keys": "inf:1;champ_to_hand;exigent"
 },
 "M6": {
 "h": "0297b018bb96",
@@ -318,16 +318,16 @@
 "keys": ""
 },
 "X2": {
-"h": "83163602e2a0",
-"keys": ""
+"h": "30f8d781c209",
+"keys": "flavor"
 },
 "X3": {
 "h": "c6ff51b7efd5",
 "keys": ""
 },
 "X4": {
-"h": "3f0dcedea967",
-"keys": "reveal:vanq_le:2"
+"h": "1890af84d462",
+"keys": "reveal:vanq_le:3"
 },
 "X5": {
 "h": "c6ff51b7efd5",
@@ -362,16 +362,16 @@
 "keys": "reveal:vanq_choice_nonmilitia"
 },
 "T2": {
-"h": "83163602e2a0",
-"keys": ""
+"h": "f4e1225efeb6",
+"keys": "flavor"
 },
 "T3": {
-"h": "83163602e2a0",
-"keys": ""
+"h": "352c1ce4c62c",
+"keys": "flavor"
 },
 "T4": {
-"h": "83163602e2a0",
-"keys": ""
+"h": "ea43966af554",
+"keys": "flavor"
 },
 "T5": {
 "h": "5356b588f98b",
@@ -382,12 +382,12 @@
 "keys": ""
 },
 "T8": {
-"h": "83163602e2a0",
-"keys": ""
+"h": "704510f63597",
+"keys": "flavor"
 },
 "T9": {
-"h": "83163602e2a0",
-"keys": ""
+"h": "cf0661db9b37",
+"keys": "flavor"
 },
 "T10": {
 "h": "40f3890c2830",
